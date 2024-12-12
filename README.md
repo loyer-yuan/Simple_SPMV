@@ -2,6 +2,15 @@
 
 This project is a simple implementation of Sparse Matrix-Vector Multiplication (SPMV).
 
+## ToDoLists
+
+GPU kernel:
+- [ ] DIA
+- [ ] ELL
+- [ ] CSR(scalar)
+- [ ] CSR(vector)
+- [ ] COO
+
 ## Requirements
 
 - C++ compiler (e.g., g++)
