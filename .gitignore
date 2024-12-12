@@ -1,0 +1,42 @@
+# Compiled object files
+*.o
+*.obj
+obj/
+bin/
+
+# Compiled static libraries
+*.lib
+*.a
+
+# Compiled dynamic libraries
+*.dll
+*.so
+*.dylib
+
+# CUDA binaries
+*.cubin
+*.ptx
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.log
+*.dbg
+*.dmp
+
+# CUDA generated files
+*.cu.cpp
+*.cu.d
+*.cu.o
+
+# IDE specific files
+.vscode/
+.idea/
+*.code-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
