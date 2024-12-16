@@ -30,7 +30,7 @@ $(TARGET): $(OBJECTS)
 	# $(NVCC) $(OBJECTS) -o $@
 	$(CXX) $(OBJECTS) -o $@
 
-dia_test: $(OBJ_DIR)/test_dia.o $(OBJ_DIR)/v1_cuda_DIA.o
+dia_test: $(OBJ_DIR)/test_dia.o $(OBJ_DIR)/v1_cuda_DIA.o $(OBJ_DIR)/v0_cpu_naive.o
 	@mkdir -p $(TEST_DIR)
 	$(NVCC) $^ -o $(TEST_DIR)/$@
 

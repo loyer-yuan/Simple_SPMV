@@ -3,7 +3,7 @@
 #include <cstring>
 #define assertm(exp, msg) assert((void(msg), exp))
 
-#include <cstdio>
+// #include <cstdio>
 
 template <typename T>
 void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda)
@@ -67,3 +67,33 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __re
 
 // Instantiate the template
 template void mat2dia<float>(const float * __restrict__ mat, float * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda);
+
+
+template <typename T>
+__global__ void spmv_dia_kernel0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k) {
+    const int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < m) {
+        T sum = 0;
+        for (int i = 0; i < ndiags; i++) {
+            const int col = row + dia_offsets[i];
+            const T value = dia_data[i * m + row];
+            if (col >= 0 && col < k) {
+                sum += value * vec[col];
+            }
+        }
+        out[row] = sum;
+    }
+}
+
+// Instantiate the template
+template __global__ void spmv_dia_kernel0<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);
+
+template <typename T>
+void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k) {
+    const int block_size = 128;
+    const int n_blocks = (m + block_size - 1) / block_size;
+    spmv_dia_kernel0<T><<<n_blocks, block_size>>>(dia_data, dia_offsets, vec, out, ndiags, m, k);
+}
+
+// Instantiate the template
+template void spmv_dia0<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);
