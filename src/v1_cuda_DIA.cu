@@ -6,7 +6,7 @@
 #include <cstdio>
 
 template <typename T>
-void mat2dia(const T * __restrict__ mat, T * __restrict__ * dia_data, int * __restrict__ * dia_offsets, int & ndiags, const int m, const int k, const int lda)
+void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda)
 {
     assertm(m > 0 && k > 0, "Invalid matrix size, size of matrix must be greater than 0");
     assertm(m == lda && k == lda, "Only support square matrix");
@@ -40,22 +40,20 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ * dia_data, int * __re
 
     // Store the diagonals in the DIA format
     ndiags = count_diags;
-    int* tdia_offsets = new int[ndiags];
-    T* tdia_data = new T[ndiags * m];
+    dia_offsets = new int[ndiags];
+    dia_data = new T[ndiags * m];
     int true_idx = 0;
     for (int i = 0; i < max_ndiags; i++) {
         if (!is_diagonal[i]) {
             continue;
         }
-        tdia_offsets[true_idx] = i - (m-1);
-        // Store the diagonal with column-major order
+        dia_offsets[true_idx] = i - (m-1);
+        // Store the diagonal with m-major order, note: k==m
         for (int j = 0; j < m; j++) {
-            tdia_data[true_idx * m + j] = diags[i][j];
+            dia_data[true_idx * m + j] = diags[i][j];
         }
         true_idx++;
     }
-    *dia_data = tdia_data;
-    *dia_offsets = tdia_offsets;
 
     // Clean up
     for (int i = 0; i < max_ndiags; i++) {
@@ -68,4 +66,4 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ * dia_data, int * __re
 }
 
 // Instantiate the template
-template void mat2dia<float>(const float * __restrict__ mat, float * __restrict__ * dia_data, int * __restrict__ * dia_offsets, int & ndiags, const int m, const int k, const int lda);
+template void mat2dia<float>(const float * __restrict__ mat, float * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda);

@@ -27,7 +27,7 @@ int main() {
     float *dia_data;
     int *dia_offsets;
     int ndiags = 0;
-    mat2dia<float>(mat_cpu, &dia_data, &dia_offsets, ndiags, M, K, K);
+    mat2dia<float>(mat_cpu, dia_data, dia_offsets, ndiags, M, K, K);
     printf("\ndia_data:\n");
     print_data(dia_data, ndiags, M);
     printf("\ndia_offsets:\n");

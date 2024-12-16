@@ -18,7 +18,7 @@
  * @todo m, k can be used as template elements
  */
 template<typename T>
-void mat2dia(const T * __restrict__ mat, T * __restrict__ * dia_data, int * __restrict__ * dia_offsets, int & ndiags, const int m, const int k, const int lda);
+void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda);
 
 // template<typename T>
 // __global__ void spmv_dia_kernel0();
