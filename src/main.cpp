@@ -2,7 +2,7 @@
 #include <random>
 #include <utils.h>
 
-#include <spmv_cpu_kernel.h>
+#include "spmv_cpu_kernel.h"
 
 #define DEFAULT_M 10
 #define DEFAULT_K 10
