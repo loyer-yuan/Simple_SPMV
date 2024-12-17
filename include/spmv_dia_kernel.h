@@ -4,7 +4,7 @@
 
 /**
  * @brief Convert a matrix to DIA format
- * 
+ *
  * @tparam T data type
  * @param mat input matrix
  * @param dia_data output data array
@@ -13,16 +13,16 @@
  * @param m input number of rows
  * @param k intput number of columns
  * @param lda input leading dimension, default is k, means row-major
- * 
+ *
  * @todo m, k can be used as template elements
  */
 template<typename T>
-void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda);
+void mat2dia(const T* __restrict__ mat, T* __restrict__& dia_data, int* __restrict__& dia_offsets, int& ndiags, const int m, const int k, const int lda);
 
 
 /**
  * @brief DIA SpMV kernel wrapper
- * 
+ *
  * @tparam T data type
  * @param dia_data input matrix's DIA format data array
  * @param dia_offsets input matrix's DIA format offsets array
@@ -33,11 +33,11 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __re
  * @param k input number of columns
  */
 template<typename T>
-void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k);
+void spmv_dia0(const T* __restrict__ dia_data, const int* __restrict__ dia_offsets, const T* __restrict__ vec, T* __restrict__ out, const int ndiags, const int m, const int k);
 
 /**
  * @brief DIA SpMV Entry. Including memory allocation and data transfer
- * 
+ *
  * @tparam T data type
  * @param dia_data input matrix's DIA format data array
  * @param dia_offsets input matrix's DIA format offsets array
@@ -48,7 +48,7 @@ void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_off
  * @param k input number of columns
  */
 template<typename T>
-void compute_spmv_dia(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k);
+void compute_spmv_dia(const T* __restrict__ dia_data, const int* __restrict__ dia_offsets, const T* __restrict__ vec, T* __restrict__ out, const int ndiags, const int m, const int k);
 
 
 #endif
