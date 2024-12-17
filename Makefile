@@ -15,7 +15,7 @@ TEST_DIR := bin/test
 
 # Files
 CXX_SOURCES := $(SRC_DIR)/main.cpp $(SRC_DIR)/v0_cpu_naive.cpp
-CUDA_SOURCES := 
+CUDA_SOURCES := $(SRC_DIR)/v1_cuda_DIA.cu
 CXX_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(CXX_SOURCES))
 CUDA_OBJECTS := $(patsubst $(SRC_DIR)/%.cu, $(OBJ_DIR)/%.o, $(CUDA_SOURCES))
 
@@ -27,8 +27,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
 	@mkdir -p $(BIN_DIR)
-	# $(NVCC) $(OBJECTS) -o $@
-	$(CXX) $(OBJECTS) -o $@
+	$(NVCC) $(OBJECTS) -o $@
 
 dia_test: $(OBJ_DIR)/test_dia.o $(OBJ_DIR)/v1_cuda_DIA.o $(OBJ_DIR)/v0_cpu_naive.o
 	@mkdir -p $(TEST_DIR)

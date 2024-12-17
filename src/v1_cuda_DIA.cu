@@ -3,8 +3,6 @@
 #include <cstring>
 #define assertm(exp, msg) assert((void(msg), exp))
 
-// #include <cstdio>
-
 template <typename T>
 void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda)
 {
@@ -69,6 +67,18 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __re
 template void mat2dia<float>(const float * __restrict__ mat, float * __restrict__ & dia_data, int * __restrict__ & dia_offsets, int & ndiags, const int m, const int k, const int lda);
 
 
+/**
+ * @brief DIA SpMV kernel
+ * 
+ * @tparam T data type
+ * @param dia_data input matrix's DIA format data array
+ * @param dia_offsets input matrix's DIA format offsets array
+ * @param vec input vector
+ * @param out output vector
+ * @param ndiags intput number of diagonals
+ * @param m input number of rows
+ * @param k input number of columns
+ */
 template <typename T>
 __global__ void spmv_dia_kernel0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k) {
     const int row = blockIdx.x * blockDim.x + threadIdx.x;
@@ -86,7 +96,7 @@ __global__ void spmv_dia_kernel0(const T * __restrict__ dia_data, const int * __
 }
 
 // Instantiate the template
-template __global__ void spmv_dia_kernel0<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);
+// template __global__ void spmv_dia_kernel0<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);
 
 template <typename T>
 void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k) {
@@ -97,3 +107,34 @@ void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_off
 
 // Instantiate the template
 template void spmv_dia0<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);
+
+
+template <typename T>
+void compute_spmv_dia(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k) {
+    // Prepare the device data
+    float *dia_data_gpu;
+    int *dia_offsets_gpu;
+    float *vec_gpu;
+    float *out_gpu;
+    cudaMalloc(&dia_data_gpu, ndiags * m * sizeof(float));
+    cudaMalloc(&dia_offsets_gpu, ndiags * sizeof(int));
+    cudaMalloc(&vec_gpu, k * sizeof(float));
+    cudaMalloc(&out_gpu, m * sizeof(float));
+    cudaMemcpy(dia_data_gpu, dia_data, ndiags * m * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(dia_offsets_gpu, dia_offsets, ndiags * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(vec_gpu, vec, k * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Run the DIA SpMV kernel
+    spmv_dia0<float>(dia_data_gpu, dia_offsets_gpu, vec_gpu, out_gpu, ndiags, m, k);
+
+    cudaMemcpy(out, out_gpu, m * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // clean up
+    cudaFree(dia_data_gpu);
+    cudaFree(dia_offsets_gpu);
+    cudaFree(vec_gpu);
+    cudaFree(out_gpu);
+}
+
+// Instantiate the template
+template void compute_spmv_dia<float>(const float * __restrict__ dia_data, const int * __restrict__ dia_offsets, const float * __restrict__ vec, float * __restrict__ out, const int ndiags, const int m, const int k);

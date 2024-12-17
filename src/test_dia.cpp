@@ -4,8 +4,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include <cuda_runtime.h>
-
 int main() {
     const int M = 10;
     const int K = M;
@@ -43,21 +41,9 @@ int main() {
     print_data(out_cpu, 1, M);
 
     // Run the DIA SpMV kernel
-    float *dia_data_gpu;
-    int *dia_offsets_gpu;
-    float *vec_gpu;
-    float *out_gpu;
-    cudaMalloc(&dia_data_gpu, ndiags * M * sizeof(float));
-    cudaMalloc(&dia_offsets_gpu, ndiags * sizeof(int));
-    cudaMalloc(&vec_gpu, K * sizeof(float));
-    cudaMalloc(&out_gpu, M * sizeof(float));
-    cudaMemcpy(dia_data_gpu, dia_data, ndiags * M * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(dia_offsets_gpu, dia_offsets, ndiags * sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(vec_gpu, vec_cpu, K * sizeof(float), cudaMemcpyHostToDevice);
-    spmv_dia0<float>(dia_data_gpu, dia_offsets_gpu, vec_gpu, out_gpu, ndiags, M, K);
     float *out_gpu_cpu = new float[M];
-    cudaMemcpy(out_gpu_cpu, out_gpu, M * sizeof(float), cudaMemcpyDeviceToHost);
-
+    compute_spmv_dia<float>(dia_data, dia_offsets, vec_cpu, out_gpu_cpu, ndiags, M, K);
+    
     printf("\nout_gpu_cpu:\n");
     print_data(out_gpu_cpu, 1, M);
 
@@ -75,10 +61,7 @@ int main() {
     }
 
     // Clean up
-    cudaFree(dia_data_gpu);
-    cudaFree(dia_offsets_gpu);
-    cudaFree(vec_gpu);
-    cudaFree(out_gpu);
+    delete[] out_gpu_cpu;
 
     delete[] dia_data;
     delete[] dia_offsets;

@@ -1,7 +1,6 @@
 #ifndef SPMV_DIA_KERNEL_H
 #define SPMV_DIA_KERNEL_H
 
-#include <cuda_runtime.h>
 
 /**
  * @brief Convert a matrix to DIA format
@@ -22,22 +21,6 @@ void mat2dia(const T * __restrict__ mat, T * __restrict__ & dia_data, int * __re
 
 
 /**
- * @brief DIA SpMV kernel
- * 
- * @tparam T data type
- * @param dia_data input matrix's DIA format data array
- * @param dia_offsets input matrix's DIA format offsets array
- * @param vec input vector
- * @param out output vector
- * @param ndiags intput number of diagonals
- * @param m input number of rows
- * @param k input number of columns
- */
-template<typename T>
-__global__ void spmv_dia_kernel0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k);
-
-
-/**
  * @brief DIA SpMV kernel wrapper
  * 
  * @tparam T data type
@@ -51,4 +34,21 @@ __global__ void spmv_dia_kernel0(const T * __restrict__ dia_data, const int * __
  */
 template<typename T>
 void spmv_dia0(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k);
+
+/**
+ * @brief DIA SpMV Entry. Including memory allocation and data transfer
+ * 
+ * @tparam T data type
+ * @param dia_data input matrix's DIA format data array
+ * @param dia_offsets input matrix's DIA format offsets array
+ * @param vec input vector
+ * @param out output vector
+ * @param ndiags intput number of diagonals
+ * @param m input number of rows
+ * @param k input number of columns
+ */
+template<typename T>
+void compute_spmv_dia(const T * __restrict__ dia_data, const int * __restrict__ dia_offsets, const T * __restrict__ vec, T * __restrict__ out, const int ndiags, const int m, const int k);
+
+
 #endif
