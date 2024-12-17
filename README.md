@@ -5,7 +5,7 @@ This project is a simple implementation of Sparse Matrix-Vector Multiplication (
 ## ToDoLists
 
 GPU kernel:
-- [ ] DIA
+- [X] DIA
 - [ ] ELL
 - [ ] CSR(scalar)
 - [ ] CSR(vector)
