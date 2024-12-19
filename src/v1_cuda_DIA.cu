@@ -1,6 +1,8 @@
 #include "spmv_dia_kernel.h"
 #include <cassert>
 #include <cstring>
+#include <cuda_runtime.h>
+
 #define assertm(exp, msg) assert((void(msg), exp))
 
 template <typename T>
