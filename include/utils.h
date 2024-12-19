@@ -110,4 +110,14 @@ void print_data(const T* data, const int m, const int k)
   }
 }
 
+
+template <typename T = float>
+void print_colMajor_data(const T* data, const int m, const int k) {
+  for (int i = 0; i < m; ++i) {
+    for (int j = 0; j < k; ++j) {
+      std::cout << std::setw(6) << std::setprecision(4) << std::fixed << data[j * m + i] << " ";
+    }
+    std::cout << std::endl;
+  }
+}
 #endif // SIMPLE_SPMV_UTILS_H

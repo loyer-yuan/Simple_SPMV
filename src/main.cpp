@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
     float* dia_data;
     int* dia_offsets;
     int ndiags = 0;
-    mat2dia<>(cmat_cpu, dia_data, dia_offsets, ndiags, M, K, K);
+    mat2dia<float>(cmat_cpu, dia_data, dia_offsets, ndiags, M, K, K);
     float* out_dia = new float[M];
     compute_spmv_dia(dia_data, dia_offsets, cvec_cpu, out_dia, ndiags, M, K);
 
@@ -69,9 +69,49 @@ int main(int argc, char** argv) {
     }
 
     delete[] dia_data;
+    delete[] dia_offsets;
+    delete[] out_dia;
   } else {
     printf("\nDIA format is not supported for non-square matrices.\n");
   }
+  // ---------------------------------------------------------
+
+
+  // ---------------------------------------------------------
+  // ELL format
+  // ---------------------------------------------------------
+  printf("\n===== ELL format =====\n");
+  // Transfer the matrix to ELL format
+  float* ell_data;
+  int* ell_indices;
+  int max_nnz_per_row = 0;
+  mat2ell<float>(cmat_cpu, ell_data, ell_indices, max_nnz_per_row, M, K, K);
+  
+  // Compute the SpMV
+  float* out_ell = new float[M];
+  compute_spmv_ell(ell_data, ell_indices, cvec_cpu, out_ell, max_nnz_per_row, M, K);
+
+  printf("out_ell:\n");
+  print_data(out_ell, 1, M);
+
+  // Compare the results
+  int count = 0;
+  for (int i = 0; i < M; ++i) {
+    if (std::abs(cout_cpu[i] - out_ell[i]) > 1e-6 && count++ < 10) {
+      printf("\nResults mismatch at %d: %f != %f\n", i, cout_cpu[i], out_ell[i]);
+    }
+  }
+  if (count == 0) {
+    printf("Results match!\n");
+  } else {
+    printf("Results mismatched %d times in total.\n", count);
+  }
+  
+  // clean up
+  delete[] ell_data;
+  delete[] ell_indices;
+  delete[] out_ell;
+  // ---------------------------------------------------------
 
 
   // clean up
