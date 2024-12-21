@@ -8,6 +8,22 @@
 #define DEFAULT_M 10
 #define DEFAULT_K 10
 
+template <typename T = float>
+void check_result(const T * __restrict__ out_cpu, const T * __restrict__ out_gpu, const int M = DEFAULT_M) {
+  int count = 0;
+  for (int i = 0; i < M; ++i) {
+    if (std::abs(out_cpu[i] - out_gpu[i]) > 1e-6 && count++ < 10) {
+      printf("Results mismatch at %d: %f != %f\n", i, out_cpu[i], out_gpu[i]);
+    }
+  }
+  if (count == 0) {
+    printf("Results match!\n");
+  } else {
+    printf("Results mismatched %d times in total.\n", count);
+  }
+}
+
+
 /**
  * @brief Main function
  *
@@ -20,20 +36,32 @@ int main(int argc, char** argv) {
   const int N = M * K;
   printf("M = %d, K = %d\n", M, K);
 
+  bool print_out = true;
+  if (M >= 15) {
+    printf("When M >= 15, data isn't printed out.\n");
+    print_out = false;
+  }
+
   float* mat_cpu = new float[N];
   prepare_data<float, true>(mat_cpu, N);
-  printf("\nmat_cpu:\n");
-  print_data(mat_cpu, M, K);
+  if (print_out) {
+    printf("\nmat_cpu:\n");
+    print_data(mat_cpu, M, K);
+  }
 
   float* vec_cpu = new float[K];
   prepare_data<float, true>(vec_cpu, K, 1.0);
-  printf("\nvec_cpu:\n");
-  print_data(vec_cpu, 1, K);
+  if (print_out) {
+    printf("\nvec_cpu:\n");
+    print_data(vec_cpu, 1, K);
+  }
 
   float* out_cpu = new float[M];
   spmv_cpu_kernel0(mat_cpu, vec_cpu, out_cpu, M, K);
-  printf("\nout_cpu:\n");
-  print_data(out_cpu, 1, M);
+  if (print_out) {
+    printf("\nout_cpu:\n");
+    print_data(out_cpu, 1, M);
+  }
 
   const float* cmat_cpu = mat_cpu;
   const float* cvec_cpu = vec_cpu;
@@ -53,20 +81,10 @@ int main(int argc, char** argv) {
     compute_spmv_dia(dia_data, dia_offsets, cvec_cpu, out_dia, ndiags, M, K);
 
     printf("out_dia:\n");
-    print_data(out_dia, 1, M);
+    if (print_out) print_data(out_dia, 1, M);
 
     // Compare the results
-    int count = 0;
-    for (int i = 0; i < M; ++i) {
-      if (std::abs(cout_cpu[i] - out_dia[i]) > 1e-6 && count++ < 10) {
-        printf("Results mismatch at %d: %f != %f\n", i, cout_cpu[i], out_dia[i]);
-      }
-    }
-    if (count == 0) {
-      printf("Results match!\n");
-    } else {
-      printf("Results mismatched %d times in total.\n", count);
-    }
+    check_result<float>(cout_cpu, out_dia, M);
 
     delete[] dia_data;
     delete[] dia_offsets;
@@ -92,20 +110,10 @@ int main(int argc, char** argv) {
   compute_spmv_ell(ell_data, ell_indices, cvec_cpu, out_ell, max_nnz_per_row, M, K);
 
   printf("out_ell:\n");
-  print_data(out_ell, 1, M);
+  if (print_out) print_data(out_ell, 1, M);
 
   // Compare the results
-  int count = 0;
-  for (int i = 0; i < M; ++i) {
-    if (std::abs(cout_cpu[i] - out_ell[i]) > 1e-6 && count++ < 10) {
-      printf("\nResults mismatch at %d: %f != %f\n", i, cout_cpu[i], out_ell[i]);
-    }
-  }
-  if (count == 0) {
-    printf("Results match!\n");
-  } else {
-    printf("Results mismatched %d times in total.\n", count);
-  }
+  check_result<float>(cout_cpu, out_ell, M);
   
   // clean up
   delete[] ell_data;
@@ -113,6 +121,40 @@ int main(int argc, char** argv) {
   delete[] out_ell;
   // ---------------------------------------------------------
 
+
+  // ---------------------------------------------------------
+  // CSR format
+  // ---------------------------------------------------------
+  printf("\n===== CSR format =====\n");
+  // Transfer the matrix to CSR format
+  float* csr_data;
+  int* csr_ptr;
+  int* csr_indices;
+  mat2csr<float>(cmat_cpu, csr_data, csr_ptr, csr_indices, M, K, K);
+
+  // Compute the SpMV using scalar kernel
+  float* out_csr_scalar = new float[M];
+  compute_spmv_csr_scalar(csr_data, csr_ptr, csr_indices, cvec_cpu, out_csr_scalar, M, K);
+  float* out_csr_vector = new float[M];
+  compute_spmv_csr_vector(csr_data, csr_ptr, csr_indices, cvec_cpu, out_csr_vector, M, K);
+
+  printf("out_csr_scalar:\n");
+  if (print_out) print_data(out_csr_scalar, 1, M);
+  // Compare the results
+  check_result<float>(cout_cpu, out_csr_scalar, M);
+
+  printf("out_csr_vector:\n");
+  if (print_out) print_data(out_csr_vector, 1, M);
+  // Compare the results
+  check_result<float>(cout_cpu, out_csr_vector, M);
+
+  // clean up
+  delete[] csr_data;
+  delete[] csr_ptr;
+  delete[] csr_indices;
+  delete[] out_csr_scalar;
+  delete[] out_csr_vector;
+  // ---------------------------------------------------------
 
   // clean up
   delete[] mat_cpu;

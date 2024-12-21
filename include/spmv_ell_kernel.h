@@ -34,7 +34,7 @@ void spmv_ell0(const T* __restrict__ ell_data, const int* __restrict__ ell_indic
 
 
 /**
- * @brief ELL SpMV kernel wrapper
+ * @brief ELL SpMV Entry. Including memory allocation and data transfer
  * 
  * @tparam T data type
  * @param ell_data input matrix's ELL format data array
