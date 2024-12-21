@@ -3,5 +3,6 @@
 
 #include "spmv_dia_kernel.h"
 #include "spmv_ell_kernel.h"
+#include "spmv_csr_kernel.h"
 
 #endif
