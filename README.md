@@ -9,7 +9,7 @@ GPU kernel:
 - [X] ELL
 - [X] CSR(scalar)
 - [X] CSR(vector)
-- [ ] COO
+- [ ] COO(segment)
 
 ## Requirements
 
