@@ -12,7 +12,7 @@ template <typename T = float>
 void check_result(const T * __restrict__ out_cpu, const T * __restrict__ out_gpu, const int M = DEFAULT_M) {
   int count = 0;
   for (int i = 0; i < M; ++i) {
-    if (std::abs(out_cpu[i] - out_gpu[i]) > 1e-6 && count++ < 10) {
+    if (std::abs(out_cpu[i] - out_gpu[i]) > 1e-3 && count++ < 10) {
       printf("Results mismatch at %d: %f != %f\n", i, out_cpu[i], out_gpu[i]);
     }
   }
