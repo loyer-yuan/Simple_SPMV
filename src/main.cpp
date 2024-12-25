@@ -156,6 +156,33 @@ int main(int argc, char** argv) {
   delete[] out_csr_vector;
   // ---------------------------------------------------------
 
+  // ---------------------------------------------------------
+  // COO format
+  // ---------------------------------------------------------
+  printf("\n===== COO format =====\n");
+  // Transfer the matrix to COO format
+  float* coo_data;
+  int* coo_row_indices;
+  int* coo_col_indices;
+  int nnz = 0;
+  mat2coo<float>(cmat_cpu, coo_data, coo_row_indices, coo_col_indices, nnz, M, K, K);
+
+  // Compute the SpMV
+  float* out_coo_segment = new float[M];
+  compute_spmv_coo_segment(coo_data, coo_row_indices, coo_col_indices, cvec_cpu, out_coo_segment, M, K, nnz);
+
+  printf("out_coo_segment:\n");
+  if (print_out) print_data(out_coo_segment, 1, M);
+  // Compare the results
+  check_result<float>(cout_cpu, out_coo_segment, M);
+
+  // clean up
+  delete[] coo_data;
+  delete[] coo_row_indices;
+  delete[] coo_col_indices;
+  delete[] out_coo_segment;
+  // ---------------------------------------------------------
+
   // clean up
   delete[] mat_cpu;
   delete[] vec_cpu;

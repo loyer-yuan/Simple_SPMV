@@ -15,7 +15,7 @@ TEST_DIR := bin/test
 
 # Files
 CXX_SOURCES := $(SRC_DIR)/main.cpp $(SRC_DIR)/v0_cpu_naive.cpp
-CUDA_SOURCES := $(SRC_DIR)/v1_cuda_DIA.cu $(SRC_DIR)/v2_cuda_ELL.cu $(SRC_DIR)/v3_cuda_CSR.cu
+CUDA_SOURCES := $(SRC_DIR)/v1_cuda_DIA.cu $(SRC_DIR)/v2_cuda_ELL.cu $(SRC_DIR)/v3_cuda_CSR.cu $(SRC_DIR)/v4_cuda_COO.cu  
 CXX_OBJECTS := $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(CXX_SOURCES))
 CUDA_OBJECTS := $(patsubst $(SRC_DIR)/%.cu, $(OBJ_DIR)/%.o, $(CUDA_SOURCES))
 
