@@ -9,10 +9,15 @@
 #define DEFAULT_K 10
 
 template <typename T = float>
+inline bool all_close(const T & a, const T & b, const float rtol = 1e-05, const float atol = 1e-08) {
+  return std::abs(a - b) <= (atol + rtol * std::abs(b));
+}
+
+template <typename T = float>
 void check_result(const T * __restrict__ out_cpu, const T * __restrict__ out_gpu, const int M = DEFAULT_M) {
   int count = 0;
   for (int i = 0; i < M; ++i) {
-    if (std::abs(out_cpu[i] - out_gpu[i]) > 1e-3 && count++ < 10) {
+    if (!all_close(out_gpu[i], out_cpu[i]) && count++ < 10) {
       printf("Results mismatch at %d: %f != %f\n", i, out_cpu[i], out_gpu[i]);
     }
   }
@@ -43,14 +48,14 @@ int main(int argc, char** argv) {
   }
 
   float* mat_cpu = new float[N];
-  prepare_data<float, true>(mat_cpu, N);
+  prepare_data<float, false>(mat_cpu, N);
   if (print_out) {
     printf("\nmat_cpu:\n");
     print_data(mat_cpu, M, K);
   }
 
   float* vec_cpu = new float[K];
-  prepare_data<float, true>(vec_cpu, K, 1.0);
+  prepare_data<float, false>(vec_cpu, K, 1.0);
   if (print_out) {
     printf("\nvec_cpu:\n");
     print_data(vec_cpu, 1, K);
