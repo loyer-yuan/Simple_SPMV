@@ -9,12 +9,13 @@ GPU kernel:
 - [X] ELL
 - [X] CSR(scalar)
 - [X] CSR(vector)
-- [ ] COO
+- [X] COO(segment)
 
 ## Requirements
 
+- CUDA Toolkit
 - C++ compiler (e.g., g++)
-- CMake (optional, for building)
+- GNU make
 
 ## Building
 
