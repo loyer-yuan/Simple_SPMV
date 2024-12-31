@@ -5,7 +5,7 @@ VERBOSE := @
 CXX := g++
 NVCC := nvcc
 CXXFLAGS := -std=c++17 -O2 -Iinclude
-NVCCFLAGS := -std=c++17 -O2 -Iinclude
+NVCCFLAGS := -std=c++17 -O2 -Iinclude -lineinfo
 
 # Directories
 SRC_DIR := src
@@ -30,6 +30,10 @@ $(TARGET): $(OBJECTS)
 	$(NVCC) $(OBJECTS) -o $@
 
 dia_test: $(OBJ_DIR)/test_dia.o $(OBJ_DIR)/v1_cuda_DIA.o $(OBJ_DIR)/v0_cpu_naive.o
+	@mkdir -p $(TEST_DIR)
+	$(NVCC) $^ -o $(TEST_DIR)/$@
+
+segment_test: $(OBJ_DIR)/test_segment.o $(OBJ_DIR)/v4_cuda_COO.o $(OBJ_DIR)/v0_cpu_naive.o
 	@mkdir -p $(TEST_DIR)
 	$(NVCC) $^ -o $(TEST_DIR)/$@
 

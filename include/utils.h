@@ -120,4 +120,28 @@ void print_colMajor_data(const T* data, const int m, const int k) {
     std::cout << std::endl;
   }
 }
+
+
+template <typename T = float>
+inline bool all_close(const T & a, const T & b, const float rtol = 1e-05, const float atol = 1e-08) {
+  return std::abs(a - b) <= (atol + rtol * std::abs(b));
+}
+
+
+template <typename T = float>
+void check_result(const T * __restrict__ ref, const T * __restrict__ val, const int M) {
+  int count = 0;
+  for (int i = 0; i < M; ++i) {
+    if (!all_close(val[i], ref[i]) && count++ < 10) {
+      printf("Results mismatch at %d: %f != %f\n", i, ref[i], val[i]);
+    }
+  }
+  if (count == 0) {
+    printf("Results match!\n");
+  } else {
+    printf("Results mismatched %d times in total.\n", count);
+  }
+}
+
+
 #endif // SIMPLE_SPMV_UTILS_H

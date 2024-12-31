@@ -7,27 +7,7 @@
 
 #define DEFAULT_M 10
 #define DEFAULT_K 10
-
-template <typename T = float>
-inline bool all_close(const T & a, const T & b, const float rtol = 1e-05, const float atol = 1e-08) {
-  return std::abs(a - b) <= (atol + rtol * std::abs(b));
-}
-
-template <typename T = float>
-void check_result(const T * __restrict__ out_cpu, const T * __restrict__ out_gpu, const int M = DEFAULT_M) {
-  int count = 0;
-  for (int i = 0; i < M; ++i) {
-    if (!all_close(out_gpu[i], out_cpu[i]) && count++ < 10) {
-      printf("Results mismatch at %d: %f != %f\n", i, out_cpu[i], out_gpu[i]);
-    }
-  }
-  if (count == 0) {
-    printf("Results match!\n");
-  } else {
-    printf("Results mismatched %d times in total.\n", count);
-  }
-}
-
+#define DEFAULT_NNZ 2
 
 /**
  * @brief Main function
@@ -36,10 +16,12 @@ void check_result(const T * __restrict__ out_cpu, const T * __restrict__ out_gpu
  * @param argv M and K values, or none
  */
 int main(int argc, char** argv) {
-  const int M = (argc != 3) ? DEFAULT_M : atoi(argv[1]);
-  const int K = (argc != 3) ? DEFAULT_K : atoi(argv[2]);
+  const int M = (argc != 4) ? DEFAULT_M : atoi(argv[1]);
+  const int K = (argc != 4) ? DEFAULT_K : atoi(argv[2]);
+  const int NNZ = (argc != 4) ? DEFAULT_NNZ : atoi(argv[3]);
   const int N = M * K;
-  printf("M = %d, K = %d\n", M, K);
+  const float prob = (float)NNZ / (float)N;
+  printf("M = %d, K = %d, NNZ = %d, prob = %f\n", M, K, NNZ, prob);
 
   bool print_out = true;
   if (M >= 15) {
@@ -48,7 +30,7 @@ int main(int argc, char** argv) {
   }
 
   float* mat_cpu = new float[N];
-  prepare_data<float, false>(mat_cpu, N);
+  prepare_data<float, false>(mat_cpu, N, prob);
   if (print_out) {
     printf("\nmat_cpu:\n");
     print_data(mat_cpu, M, K);

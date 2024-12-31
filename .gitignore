@@ -4,6 +4,11 @@
 obj/
 bin/
 
+# Test scripts and results
+test*.sh
+*.ncu-rep
+*.nsys-rep
+
 # Compiled static libraries
 *.lib
 *.a
