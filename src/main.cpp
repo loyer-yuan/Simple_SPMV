@@ -1,6 +1,6 @@
 #include <cstdio>
 #include <random>
-#include <utils.h>
+#include "utils.h"
 
 #include "spmv_cpu_kernel.h"
 #include "spmv_gpu_kernel.h"
