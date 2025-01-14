@@ -1,8 +1,8 @@
 #include <cstdio>
 #include <random>
-#include <utils.h>
+#include "utils.h"
 
-#include "spmv_cpu_kernel.h"
+#include "spmv_naive_kernel.h"
 #include "spmv_gpu_kernel.h"
 
 #define DEFAULT_M 10
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
   }
 
   float* out_cpu = new float[M];
-  spmv_cpu_kernel0(mat_cpu, vec_cpu, out_cpu, M, K);
+  spmv_naive_kernel0(mat_cpu, vec_cpu, out_cpu, M, K);
   if (print_out) {
     printf("\nout_cpu:\n");
     print_data(out_cpu, 1, M);

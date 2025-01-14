@@ -1,8 +1,8 @@
 # Compiled object files
 *.o
 *.obj
-obj/
 bin/
+build/
 
 # Test scripts and results
 test*.sh

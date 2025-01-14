@@ -1,7 +1,7 @@
 #include <cstdio>
 
 #include "utils.h"
-#include "spmv_cpu_kernel.h"
+#include "spmv_naive_kernel.h"
 #include "spmv_coo_kernel.h"
 
 #define DEFAULT_M 11397
