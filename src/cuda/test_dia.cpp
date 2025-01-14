@@ -1,5 +1,5 @@
 #include "spmv_dia_kernel.h"
-#include "spmv_cpu_kernel.h"
+#include "spmv_naive_kernel.h"
 #include "utils.h"
 #include <cstdio>
 #include <cstring>
@@ -37,7 +37,7 @@ int main() {
   // Run the CPU SpMV kernel
   float* out_cpu = new float[M];
   printf("\nout_cpu:\n");
-  spmv_cpu_kernel0(mat_cpu, vec_cpu, out_cpu, M, K);
+  spmv_naive_kernel0(mat_cpu, vec_cpu, out_cpu, M, K);
   print_data(out_cpu, 1, M);
 
   // Run the DIA SpMV kernel
