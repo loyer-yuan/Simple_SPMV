@@ -13,19 +13,24 @@ GPU naive kernel:
 - [ ] CSR-Stream
 - [ ] CSR5
 
-ARM naive kernel:
+CPU naive kernel:
 - [ ] DIA
 - [ ] ELL
 - [ ] CSR(scalar)
 - [ ] CSR(vector)
 - [ ] COO(segment)
-- [ ] CSR-Stream
-- [ ] CSR5
+
+CPU cross-NUMA node optimized kernel:
+- [ ] DIA
+- [ ] ELL
+- [ ] CSR(scalar)
+- [ ] CSR(vector)
+- [ ] COO(segment)
 
 ## Requirements
 
 - CUDA Toolkit
-- C++ compiler (e.g., g++)
+- C++ compiler (e.g., clang++)
 - GNU make
 - CMake
 

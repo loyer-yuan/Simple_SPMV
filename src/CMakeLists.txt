@@ -7,3 +7,5 @@ if (CUDAToolkit_FOUND)
 else()
   message(WARNING "CUDAToolkit not found, skipping building for CUDA")
 endif()
+
+add_subdirectory(cpu)

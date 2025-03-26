@@ -1,10 +1,12 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.22)
 
 project(SIMPLE_SPMV CXX C)
 
 set(PROJECT_VERSION 0.0.1)
 option(BUILD_TEST "Build test suite" OFF)
 
+set(CMAKE_RULE_MESSAGES OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 ##
 ### C++ and CUDA flags.
 ##
