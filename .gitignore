@@ -2,7 +2,7 @@
 *.o
 *.obj
 bin/
-build/
+build*/
 
 # Test scripts and results
 test*.sh
@@ -38,7 +38,6 @@ test*.sh
 *.cu.o
 
 # IDE specific files
-.vscode/
 .idea/
 *.code-workspace
 

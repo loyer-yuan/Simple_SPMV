@@ -6,4 +6,12 @@ set_target_properties(cpu_test_dia PROPERTIES
     VERSION ${PROJECT_VERSION}
 )
 
+add_executable(cpu_test_all
+    test_all.cpp
+)
+set_target_properties(cpu_test_dia PROPERTIES
+    VERSION ${PROJECT_VERSION}
+)
+
 install(TARGETS cpu_test_dia DESTINATION ${TEST_INSTALL_BASE})
+install(TARGETS cpu_test_all DESTINATION ${TEST_INSTALL_BASE})
