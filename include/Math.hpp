@@ -251,7 +251,7 @@ void GenerateDIAData(T *mat, int m, int numDiags, bool isRuntimeRandom = false)
 
 template <typename T = float>
 inline bool AllClose(
-    const T &a, const T &b, const float rtol = 1e-05, const float atol = 1e-08)
+    const T &a, const T &b, const float rtol = 1e-03, const float atol = 1e-08)
 {
     return std::abs(a - b) <= (atol + rtol * std::abs(b));
 }

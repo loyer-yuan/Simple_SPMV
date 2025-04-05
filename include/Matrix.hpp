@@ -13,6 +13,8 @@
 
 #include "Math.hpp"
 
+#define IdxType uint32_t
+
 using namespace std;
 
 namespace xsparse {
@@ -52,8 +54,8 @@ template <typename DType>
 class BaseMatrix
 {
 public:
-    uint32_t m;  // Number of rows
-    uint32_t n;  // Number of rows and columns
+    IdxType m;  // Number of rows
+    IdxType n;  // Number of rows and columns
     unique_ptr<DType[]> data;  // Pointer to the data
 
     bool isCreated = false;  // Flag to check if the matrix is created
@@ -66,8 +68,7 @@ public:
     virtual ~BaseMatrix() noexcept = default;
 
     virtual bool CreateRamdomly(
-        const uint32_t m, const uint32_t n, const float prob,
-        const bool isRuntimeRandom)
+        const IdxType m, const IdxType n, const float prob, const bool isRuntimeRandom)
     {
         if (this->IsCreated())
         {
@@ -84,7 +85,7 @@ public:
         return true;
     }
 
-    void PrintAll() const
+    void PrintMat() const
     {
         if (!this->IsCreated())
         {
@@ -92,13 +93,13 @@ public:
             return;
         }
 
-        uint32_t rows = GetRows();
-        uint32_t cols = GetCols();
+        IdxType rows = GetRows();
+        IdxType cols = GetCols();
         cout << "Matrix(" << rows << ", " << cols << "):" << endl;
         cout << "Data:" << endl;
-        for (uint32_t i = 0; i < rows; ++i)
+        for (IdxType i = 0; i < rows; ++i)
         {
-            for (uint32_t j = 0; j < cols; ++j)
+            for (IdxType j = 0; j < cols; ++j)
             {
                 cout << std::setw(6) << std::setprecision(4) << std::fixed;
                 cout << (*this)(i, j) << " ";
@@ -108,7 +109,7 @@ public:
         cout << endl;
     }
 
-    [[nodiscard]] virtual DType operator()(const uint32_t i, const uint32_t j) const
+    [[nodiscard]] virtual DType operator()(const IdxType i, const IdxType j) const
     {
         cerr << "Not implemented yet!" << endl;
         return 0;
@@ -127,9 +128,9 @@ public:
             return false;
         }
 
-        for (uint32_t i = 0; i < GetRows(); ++i)
+        for (IdxType i = 0; i < GetRows(); ++i)
         {
-            for (uint32_t j = 0; j < GetCols(); ++j)
+            for (IdxType j = 0; j < GetCols(); ++j)
             {
                 if (AllClose((*this)(i, j), other(i, j)))
                 {
@@ -154,17 +155,17 @@ public:
         return true;
     }
 
-    [[nodiscard]] inline uint32_t GetRows() const
+    [[nodiscard]] inline IdxType GetRows() const
     {
         return m;
     }
 
-    [[nodiscard]] inline uint32_t GetCols() const
+    [[nodiscard]] inline IdxType GetCols() const
     {
         return n;
     }
 
-    [[nodiscard]] inline uint32_t GetSize() const
+    [[nodiscard]] inline IdxType GetSize() const
     {
         return m * n;
     }
@@ -190,7 +191,7 @@ struct MatInfo;
 template <DMatF Format>
 struct MatInfo<DMatF, Format>
 {
-    uint32_t lda = 0;  // Leading dimension of the matrix
+    IdxType lda = 0;  // Leading dimension of the matrix
 
     static constexpr const char *GetFormatName()
     {
@@ -218,7 +219,7 @@ public:
     ~DMatrix() noexcept override = default;
 
     bool CreateRamdomly(
-        const uint32_t m, const uint32_t n, const float prob,
+        const IdxType m, const IdxType n, const float prob,
         const bool isRuntimeRandom) override
     {
         if (this->IsCreated())
@@ -254,7 +255,7 @@ public:
     }
 
     [[nodiscard]] inline DType operator()(
-        const uint32_t i, const uint32_t j) const override
+        const IdxType i, const IdxType j) const override
     {
         if (!this->IsCreated()) [[unlikely]]
         {
@@ -282,10 +283,10 @@ public:
 template <>
 struct MatInfo<SPMatF, SPMatF::SPMatFormatCOO>
 {
-    uint32_t nnz = 0;  // Number of non-zero elements
+    IdxType nnz = 0;  // Number of non-zero elements
 
-    std::unique_ptr<uint32_t[]> rowIdx = nullptr;  // Row indices
-    std::unique_ptr<uint32_t[]> colIdx = nullptr;  // Column indices
+    std::unique_ptr<IdxType[]> rowIdx = nullptr;  // Row indices
+    std::unique_ptr<IdxType[]> colIdx = nullptr;  // Column indices
 
     static constexpr const char *GetFormatName()
     {
@@ -310,7 +311,7 @@ public:
     ~SPMatrixCOO() noexcept override = default;
 
     bool CreateRamdomly(
-        const uint32_t m, const uint32_t n, const float prob,
+        const IdxType m, const IdxType n, const float prob,
         const bool isRuntimeRandom) override
     {
         if (this->IsCreated())
@@ -321,9 +322,9 @@ public:
 
         this->m = m;
         this->n = n;
-        this->mInfo.nnz = static_cast<uint32_t>(m * n * prob);
-        this->mInfo.rowIdx = make_unique<uint32_t[]>(this->mInfo.nnz);
-        this->mInfo.colIdx = make_unique<uint32_t[]>(this->mInfo.nnz);
+        this->mInfo.nnz = static_cast<IdxType>(m * n * prob);
+        this->mInfo.rowIdx = make_unique<IdxType[]>(this->mInfo.nnz);
+        this->mInfo.colIdx = make_unique<IdxType[]>(this->mInfo.nnz);
         this->data = make_unique<DType[]>(this->mInfo.nnz);
 
         if (GenerateData(
@@ -353,7 +354,7 @@ public:
         return false;
     }
 
-    [[nodiscard]] DType operator()(const uint32_t i, const uint32_t j) const override
+    [[nodiscard]] DType operator()(const IdxType i, const IdxType j) const override
     {
         assertm(
             i < this->m && j < this->n && i >= 0 && j >= 0,
@@ -366,27 +367,27 @@ public:
 
         if (isSorted) [[likely]]
         {
-            const uint32_t *rowStart = this->mInfo.rowIdx.get();
-            const uint32_t *rowEnd = this->mInfo.rowIdx.get() + this->mInfo.nnz;
+            const IdxType *rowStart = this->mInfo.rowIdx.get();
+            const IdxType *rowEnd = this->mInfo.rowIdx.get() + this->mInfo.nnz;
 
-            const uint32_t *rowLow = lower_bound(rowStart, rowEnd, i);
-            const uint32_t *rowUp = upper_bound(rowStart, rowEnd, i);
+            const IdxType *rowLow = lower_bound(rowStart, rowEnd, i);
+            const IdxType *rowUp = upper_bound(rowStart, rowEnd, i);
 
             if (rowLow >= rowEnd)
                 return (DType)0.0f;
 
-            const uint32_t rowIdxStartOffset = static_cast<uint32_t>(rowLow - rowStart);
-            const uint32_t rowIdxEndOffset = static_cast<uint32_t>(rowUp - rowStart);
+            const IdxType rowIdxStartOffset = static_cast<IdxType>(rowLow - rowStart);
+            const IdxType rowIdxEndOffset = static_cast<IdxType>(rowUp - rowStart);
 
-            const uint32_t *colStart = this->mInfo.colIdx.get() + rowIdxStartOffset;
-            const uint32_t *colEnd = this->mInfo.colIdx.get() + rowIdxEndOffset;
+            const IdxType *colStart = this->mInfo.colIdx.get() + rowIdxStartOffset;
+            const IdxType *colEnd = this->mInfo.colIdx.get() + rowIdxEndOffset;
 
-            const uint32_t *colLow = lower_bound(colStart, colEnd, j);
+            const IdxType *colLow = lower_bound(colStart, colEnd, j);
 
             if (colLow == colEnd || *colLow != j)
                 return (DType)0.0f;
 
-            const uint32_t *colUp = upper_bound(colStart, colEnd, j);
+            const IdxType *colUp = upper_bound(colStart, colEnd, j);
 
             if (colUp - colLow > 1)
             {
@@ -434,14 +435,14 @@ public:
             return;
         }
 
-        uint32_t rows = this->GetRows();
-        uint32_t cols = this->GetCols();
+        IdxType rows = this->GetRows();
+        IdxType cols = this->GetCols();
         cout << "Matrix(" << rows << ", " << cols << ") NNZ: " << this->mInfo.nnz
              << endl;
         cout << "Data:" << endl;
         cout << "RowIdx ColIdx Value" << endl;
         cout << "---------------------" << endl;
-        for (uint32_t i = 0; i < this->mInfo.nnz; ++i)
+        for (IdxType i = 0; i < this->mInfo.nnz; ++i)
         {
             cout << std::setw(6) << std::setprecision(4) << std::fixed;
             cout << this->mInfo.rowIdx[i] << ' ' << this->mInfo.colIdx[i] << ' '

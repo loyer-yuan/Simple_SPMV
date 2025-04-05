@@ -11,8 +11,8 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 ### C++ and CUDA flags.
 ##
 
-# Requires C++17.
-set(CMAKE_CXX_STANDARD 17)
+# Requires C++20.
+set(CMAKE_CXX_STANDARD 20)
 
 ##
 ### Project build.
