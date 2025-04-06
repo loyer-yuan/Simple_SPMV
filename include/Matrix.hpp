@@ -109,11 +109,7 @@ public:
         cout << endl;
     }
 
-    [[nodiscard]] virtual DType operator()(const IdxType i, const IdxType j) const
-    {
-        cerr << "Not implemented yet!" << endl;
-        return 0;
-    }
+    [[nodiscard]] virtual DType operator()(const IdxType i, const IdxType j) const = 0;
 
     bool operator==(const BaseMatrix &other) const
     {
@@ -139,6 +135,11 @@ public:
             }
         }
         return true;
+    }
+
+    inline virtual bool IsCreated() const
+    {
+        return isCreated && m > 0 && n > 0 && data.get() != nullptr;
     }
 
     virtual bool Destroy()
@@ -168,11 +169,6 @@ public:
     [[nodiscard]] inline IdxType GetSize() const
     {
         return m * n;
-    }
-
-    inline bool IsCreated() const
-    {
-        return isCreated && m > 0 && n > 0 && data.get() != nullptr;
     }
 
 };  // class BaseMatrix
@@ -404,6 +400,18 @@ public:
         }
     }
 
+    bool IsCreated() const override
+    {
+        return this->isCreated && this->m > 0 && this->n > 0 &&
+               this->data.get() != nullptr && this->mInfo.rowIdx.get() != nullptr &&
+               this->mInfo.colIdx.get() != nullptr;
+    }
+
+    [[nodiscard]] inline IdxType GetNNZ() const
+    {
+        return mInfo.nnz;
+    }
+
     bool Destroy() override
     {
         if (!this->IsCreated())
@@ -455,6 +463,182 @@ private:
     bool isSorted = false;  // Flag to check if the matrix is row-major sorted
 
 };  // class SPMatrixCOO
+
+//
+// Sparse Matrix - CSR
+//
+
+template <>
+struct MatInfo<SPMatF, SPMatF::SPMatFormatCSR>
+{
+    IdxType nnz = 0;  // Number of non-zero elements
+
+    std::unique_ptr<IdxType[]> rowPtr = nullptr;  // Row pointers
+    std::unique_ptr<IdxType[]> colIdx = nullptr;  // Column indices
+
+    static constexpr const char *GetFormatName()
+    {
+        return "CSR";
+    }
+};
+
+template <typename DType>
+class SPMatrixCSR : public BaseMatrix<DType>
+{
+    typedef MatInfo<SPMatF, SPMatF::SPMatFormatCSR>
+        MInfoType;  // Matrix information type
+public:
+    MInfoType mInfo;  // Matrix information
+
+public:
+    SPMatrixCSR() noexcept : BaseMatrix<DType>(), mInfo{0}
+    {
+    }
+
+    ~SPMatrixCSR() noexcept override = default;
+
+    bool CreateRamdomly(
+        const IdxType m, const IdxType n, const float prob,
+        const bool isRuntimeRandom) override
+    {
+        cerr << "CSR:CreateRamdomly not implemented!" << endl;
+        return false;
+    }
+
+    bool CreateFromCOO(const SPMatrixCOO<DType> &matCoo)
+    {
+        if (this->IsCreated())
+        {
+            cerr << "SPMatrixCSR already created!" << endl;
+            return false;
+        }
+        if (!matCoo.IsCreated() || !matCoo.IsSorted())
+        {
+            if (!matCoo.IsCreated())
+                cerr << "SPMatrixCOO not created!" << endl;
+            if (!matCoo.IsSorted())
+                cerr << "SPMatrixCOO not sorted!" << endl;
+            return false;
+        }
+
+        this->m = matCoo.GetRows();
+        this->n = matCoo.GetCols();
+        this->mInfo.nnz = matCoo.mInfo.nnz;
+
+        this->mInfo.rowPtr = make_unique<IdxType[]>(this->m + 1);
+        this->mInfo.colIdx = make_unique<IdxType[]>(this->mInfo.nnz);
+        this->data = make_unique<DType[]>(this->mInfo.nnz);
+
+        IdxType rowIdxCoo = 0;
+        this->mInfo.rowPtr[0] = 0;
+        for (IdxType i = 0; i < this->m; ++i)
+        {
+            while (rowIdxCoo < this->mInfo.nnz && matCoo.mInfo.rowIdx[rowIdxCoo] == i)
+            {
+                ++rowIdxCoo;
+            }
+            this->mInfo.rowPtr[i + 1] = rowIdxCoo;
+        }
+        memcpy(
+            this->mInfo.colIdx.get(), matCoo.mInfo.colIdx.get(),
+            this->mInfo.nnz * sizeof(IdxType));
+        memcpy(this->data.get(), matCoo.data.get(), this->mInfo.nnz * sizeof(DType));
+        this->isCreated = true;
+
+        return true;
+    }
+
+    [[nodiscard]] DType operator()(const IdxType i, const IdxType j) const override
+    {
+        assertm(
+            i < this->m && j < this->n && i >= 0 && j >= 0,
+            "Error: Index out of bounds! Please check the indices.");
+        if (!this->IsCreated()) [[unlikely]]
+        {
+            cerr << "Matrix not created!" << endl;
+            return 0;
+        }
+
+        const IdxType rowIdxStartOffset = this->mInfo.rowPtr[i];
+        const IdxType rowIdxEndOffset = this->mInfo.rowPtr[i + 1];
+
+        if (rowIdxStartOffset == rowIdxEndOffset)
+            return (DType)0.0f;
+
+        const IdxType *colStart = this->mInfo.colIdx.get() + rowIdxStartOffset;
+        const IdxType *colEnd = this->mInfo.colIdx.get() + rowIdxEndOffset;
+
+        const IdxType *colLow = lower_bound(colStart, colEnd, j);
+        if (colLow == colEnd || *colLow != j)
+            return (DType)0.0f;
+
+        const IdxType *colUp = upper_bound(colStart, colEnd, j);
+        if (colUp - colLow > 1)
+        {
+            cerr << "Error: Have duplicate indices!" << endl;
+            return 0;
+        }
+        return this->data[colLow - this->mInfo.colIdx.get()];
+    }
+
+    bool IsCreated() const override
+    {
+        return this->isCreated && this->m > 0 && this->n > 0 &&
+               this->data.get() != nullptr && this->mInfo.rowPtr.get() != nullptr &&
+               this->mInfo.colIdx.get() != nullptr;
+    }
+
+    bool Destroy() override
+    {
+        if (!this->IsCreated())
+        {
+            cerr << "SPMatrixCSR not created!" << endl;
+            return false;
+        }
+        this->data.reset();  // Release the memory
+        this->mInfo.rowPtr.reset();
+        this->mInfo.colIdx.reset();
+        this->m = 0;
+        this->n = 0;
+        this->mInfo.nnz = 0;
+        this->isCreated = false;  // Reset the created flag
+        return true;
+    }
+
+    void PrintCSR() const
+    {
+        if (!this->IsCreated())
+        {
+            cerr << "Matrix not created!" << endl;
+            return;
+        }
+
+        IdxType rows = this->GetRows();
+        IdxType cols = this->GetCols();
+        cout << "Matrix(" << rows << ", " << cols << ") NNZ: " << this->mInfo.nnz
+             << endl;
+        cout << "RowIdx:" << endl;
+        for (IdxType i = 0; i < rows + 1; ++i)
+        {
+            cout << std::setw(6) << std::setprecision(4) << std::fixed;
+            cout << this->mInfo.rowPtr[i] << " ";
+        }
+        cout << endl;
+        cout << "ColIdx Value" << endl;
+        cout << "---------------------" << endl;
+        for (IdxType i = 0; i < this->mInfo.nnz; ++i)
+        {
+            cout << std::setw(6) << std::setprecision(4) << std::fixed;
+            cout << this->mInfo.colIdx[i] << ' ' << this->data[i] << endl;
+        }
+        cout << endl;
+    }
+
+    [[nodiscard]] inline IdxType GetNNZ() const
+    {
+        return mInfo.nnz;
+    }
+};  // class SPMatrixCSR
 
 }  // namespace xsparse
 
