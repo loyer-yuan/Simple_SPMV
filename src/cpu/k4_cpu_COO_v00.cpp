@@ -70,5 +70,8 @@ template void compute_spmv_coo<double>(
     const double *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const double *__restrict__ vec,
     double *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
-
+template void compute_spmv_coo<int>(
+    const int *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
+    const IdxType *__restrict__ cooColIndices, const int *__restrict__ vec,
+    int *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
 }  // namespace xsparse

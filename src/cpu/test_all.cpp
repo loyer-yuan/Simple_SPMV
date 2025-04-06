@@ -68,8 +68,7 @@ int main(int argc, char *argv[])
     //
 
     std::vector<DType> ivec(K);
-    xsparse::GenerateData<DType>(
-        ivec.data(), K, 1.0f, true, (DType)-10.0f, (DType)10.0f);
+    xsparse::GenerateData<DType>(ivec.data(), K, 1.0f, true, (DType)-10, (DType)10);
 #if IsPrint
     std::cout << "Input vector:" << std::endl;
     for (auto i : ivec)

@@ -61,8 +61,8 @@ void GenerateIndices2D(
         double prob = (double)remaining / (double)(maxSize - i);
         if (dis(gen) < prob)
         {
-            mIndices[idx] = i / (T)nSize;
-            nIndices[idx] = i % (T)nSize;
+            mIndices[idx] = i / static_cast<T>(nSize);
+            nIndices[idx] = i % static_cast<T>(nSize);
             idx++;
             --remaining;
         }
@@ -141,21 +141,21 @@ void GenerateIndices1D(
 template <typename T = float>
 uint32_t GenerateData(
     T *data, const int n, const float prob = 0.2, const bool isRuntimeRandom = false,
-    const T minV = (T)0.0, const T maxV = (T)1.0)
+    const T minV = 0.0, const T maxV = 1.0)
 {
     uint32_t count = 0;
     if (isRuntimeRandom) [[likely]]
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<T> dis(0, 1);
+        std::uniform_real_distribution<double> dis(0, 1);
         for (int i = 0; i < n; i++)
         {
             if (dis(gen) < prob)
             {
                 count++;
-                data[i] = (T)(((double)dis(gen)) * ((double)maxV - (double)minV) +
-                              (double)minV);
+                data[i] = static_cast<T>(
+                    ((double)dis(gen)) * ((double)maxV - (double)minV) + (double)minV);
             }
             else
             {
@@ -167,14 +167,14 @@ uint32_t GenerateData(
     {
         unsigned int seed = globalSeedCounter++;
         std::mt19937 gen(seed);
-        std::uniform_real_distribution<T> dis(0, 1);
+        std::uniform_real_distribution<double> dis(0, 1);
         for (int i = 0; i < n; i++)
         {
             if (dis(gen) < prob)
             {
                 count++;
-                data[i] = (T)(((double)dis(gen)) * ((double)maxV - (double)minV) +
-                              (double)minV);
+                data[i] = static_cast<T>(
+                    ((double)dis(gen)) * ((double)maxV - (double)minV) + (double)minV);
             }
             else
             {
@@ -200,7 +200,7 @@ void GenerateDIAData(T *mat, int m, int numDiags, bool isRuntimeRandom = false)
     {
         std::random_device rd;
         std::mt19937 gen(rd());
-        std::uniform_real_distribution<T> dis(0.0, 1.0);
+        std::uniform_real_distribution<double> dis(0.0, 1.0);
         for (int i = 0; i < max_diags; i++)
         {
             // Choose as a diagonal
@@ -225,7 +225,7 @@ void GenerateDIAData(T *mat, int m, int numDiags, bool isRuntimeRandom = false)
     {
         unsigned int seed = globalSeedCounter++;
         std::mt19937 gen(seed);
-        std::uniform_real_distribution<float> dis(0.0, 1.0);
+        std::uniform_real_distribution<double> dis(0.0, 1.0);
         for (int i = 0; i < max_diags; i++)
         {
             // Choose as a diagonal
@@ -251,7 +251,7 @@ void GenerateDIAData(T *mat, int m, int numDiags, bool isRuntimeRandom = false)
 
 template <typename T = float>
 inline bool AllClose(
-    const T &a, const T &b, const float rtol = 1e-03, const float atol = 1e-08)
+    const T &a, const T &b, const float rtol = 1e-05, const float atol = 1e-08)
 {
     return std::abs(a - b) <= (atol + rtol * std::abs(b));
 }

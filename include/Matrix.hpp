@@ -323,7 +323,7 @@ public:
         this->mInfo.colIdx = make_unique<IdxType[]>(this->mInfo.nnz);
         this->data = make_unique<DType[]>(this->mInfo.nnz);
 
-        if (GenerateData(
+        if (GenerateData<DType>(
                 this->data.get(), this->mInfo.nnz, 1, isRuntimeRandom, DATA_MIN,
                 DATA_MAX) != this->mInfo.nnz)
         {
