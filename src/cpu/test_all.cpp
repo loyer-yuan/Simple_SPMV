@@ -62,10 +62,9 @@ int main(int argc, char *argv[])
     std::cout << "PROB = " << PROB << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
-    std::cout << "Test COO kernel." << std::endl;
 
     //
-    // Prepare data
+    //  Prepare data
     //
 
     std::vector<DType> ivec(K);
@@ -86,42 +85,66 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to create SPMatrixCOO!" << std::endl;
         return -1;
     }
-#if IsPrint
+#if IsPrint && 0
     spMatCOO.PrintCOO();
+#endif
+#if IsPrint
+    std::cout << "Input Matrix :" << std::endl;
     spMatCOO.PrintMat();
 #endif
 
-    std::vector<DType> ovec(M);
     std::vector<DType> ovec_ref(M);
-
-    //
-    // Run the COO SpMV kernel
-    //
-
-    std::cout << "Running CPU SpMV kernel..." << std::endl;
-    xsparse::compute_spmv_coo<DType>(
-        spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(), spMatCOO.mInfo.colIdx.get(),
-        ivec.data(), ovec.data(), spMatCOO.m, spMatCOO.n, spMatCOO.mInfo.nnz);
-
-    // Check the result
     std::cout << "Running reference SpMV kernel..." << std::endl;
+    std::cout << std::endl;
     MVRef(spMatCOO, ivec, ovec_ref);
 
-    std::cout << "Checking results..." << std::endl;
-    int count = 0;
-    for (int i = 0; i < M; ++i)
+#if IsPrint
+    std::cout << "Reference output vector:" << std::endl;
+    for (auto i : ovec_ref)
     {
-        if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
+        std::cout << i << " ";
+    }
+    std::cout << "\n" << std::endl;
+#endif
+    std::cout << "----------------------------------------" << std::endl;
+
+    //
+    // Test COO kernel
+    //
+    {
+        std::cout << "Test COO kernel." << std::endl;
+
+        std::vector<DType> ovec(M);
+
+        std::cout << "Running CPU SpMV kernel..." << std::endl;
+        xsparse::compute_spmv_coo<DType>(
+            spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+            spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
+            spMatCOO.n, spMatCOO.mInfo.nnz);
+
+        std::cout << "Checking results..." << std::endl;
+        int count = 0;
+        for (int i = 0; i < M; ++i)
         {
-            std::cout << "Results mismatch at " << i << ": " << ovec[i]
-                      << " != " << ovec_ref[i] << std::endl;
+            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
+            {
+                std::cout << "Results mismatch at " << i << ": " << ovec[i]
+                          << " != " << ovec_ref[i] << std::endl;
+            }
         }
+        if (count == 0)
+        {
+            std::cout << "Results match!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Results mismatched " << count << " times in total."
+                      << std::endl;
+        }
+
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
     }
-    if (count == 0)
-    {
-        std::cout << "Results match!" << std::endl;
-    }
-    else
     {
         std::cout << "Results mismatched " << count << " times in total." << std::endl;
     }
