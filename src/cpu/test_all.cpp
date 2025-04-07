@@ -166,6 +166,29 @@ int main(int argc, char *argv[])
         std::cout << "Running CPU SpMV kernel..." << std::endl;
 
         std::vector<DType> ovec(M);
+        xsparse::ComputeSPMVCSR<DType>(
+            spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+            spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
+            spMatCSR.n);
+        std::cout << "Checking results..." << std::endl;
+        int count = 0;
+        for (int i = 0; i < M; ++i)
+        {
+            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
+            {
+                std::cout << "Results mismatch at " << i << ": " << ovec[i]
+                          << " != " << ovec_ref[i] << std::endl;
+            }
+        }
+        if (count == 0)
+        {
+            std::cout << "Results match!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Results mismatched " << count << " times in total."
+                      << std::endl;
+        }
 
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
