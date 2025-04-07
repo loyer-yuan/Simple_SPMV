@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
         std::vector<DType> ovec(M);
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        xsparse::compute_spmv_coo<DType>(
+        xsparse::ComputeSPMVCOO<DType>(
             spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
             spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
             spMatCOO.n, spMatCOO.mInfo.nnz);

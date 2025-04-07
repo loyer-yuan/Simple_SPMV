@@ -6,7 +6,7 @@
 namespace xsparse {
 
 /**
- * @brief COO SpMV kernel warpper
+ * @brief Compute the sparse matrix-vector multiplication (SpMV) using COO format
  *
  * @tparam DType data type
  * @param cooData input COO data
@@ -19,7 +19,7 @@ namespace xsparse {
  * @param nnz number of non-zero elements
  */
 template <typename DType>
-void compute_spmv_coo(
+void ComputeSPMVCOO(
     const DType *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);

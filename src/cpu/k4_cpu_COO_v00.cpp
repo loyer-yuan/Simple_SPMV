@@ -6,7 +6,7 @@
 namespace xsparse {
 
 template <typename DType, uint ThreadNum>
-void spmv_coo_kernel0(
+void COOKernel0(
     const RTParams &rt, const DType *__restrict__ cooData,
     const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
@@ -25,7 +25,7 @@ void spmv_coo_kernel0(
 }
 
 template <typename DType, uint ThreadNum>
-void spmv_coo0(
+void COOCompute0(
     const DType *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz)
@@ -39,8 +39,8 @@ void spmv_coo0(
     {
         rt[i].tid = i;
         threads[i] = std::thread(
-            &spmv_coo_kernel0<DType, ThreadNum>, std::ref(rt[i]), cooData,
-            cooRowIndices, cooColIndices, vec, atomicOut, m, k, nnz);
+            &COOKernel0<DType, ThreadNum>, std::ref(rt[i]), cooData, cooRowIndices,
+            cooColIndices, vec, atomicOut, m, k, nnz);
     }
     for (IdxType i = 0; i < ThreadNum; i++)
     {
@@ -53,24 +53,24 @@ void spmv_coo0(
 }
 
 template <typename DType>
-void compute_spmv_coo(
+void ComputeSPMVCOO(
     const DType *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz)
 {
-    spmv_coo0<DType, static_cast<uint>(NumCores)>(
+    COOCompute0<DType, static_cast<uint>(NumCores)>(
         cooData, cooRowIndices, cooColIndices, vec, out, m, k, nnz);
 }
 // Instantiation
-template void compute_spmv_coo<float>(
+template void ComputeSPMVCOO<float>(
     const float *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const float *__restrict__ vec,
     float *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
-template void compute_spmv_coo<double>(
+template void ComputeSPMVCOO<double>(
     const double *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const double *__restrict__ vec,
     double *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
-template void compute_spmv_coo<int>(
+template void ComputeSPMVCOO<int>(
     const int *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const int *__restrict__ vec,
     int *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
