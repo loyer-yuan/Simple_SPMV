@@ -42,6 +42,24 @@ void ComputeSPMVCSR(
     const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k);
 
+/**
+ * @brief Compute the sparse matrix-vector multiplication (SpMV) using ELL format
+ *
+ * @tparam DType data type
+ * @param dataMat input ELL data
+ * @param idxMat input ELL index matrix
+ * @param iVec input vector
+ * @param oVer output vector
+ * @param m number of rows
+ * @param k number of columns
+ * @param colIdxMat number of columns in index matrix
+ */
+template <typename DType>
+void ComputeSPMVELL(
+    const DType *__restrict__ dataMat, const IdxType *__restrict__ idxMat,
+    const DType *__restrict__ iVec, DType *__restrict__ oVer, const IdxType m,
+    const IdxType k, const IdxType colIdxMat);
+
 }  // namespace xsparse
 
 #endif  // XSPARSE_OPS_H

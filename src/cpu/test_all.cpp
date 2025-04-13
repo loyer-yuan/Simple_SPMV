@@ -208,10 +208,34 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to create SPMatrixELL!" << std::endl;
             return -1;
         }
-// #if IsPrint && 0
+#if IsPrint && 0
         spMatELL.PrintELL();
         spMatELL.PrintMat();
-// #endif
+#endif
+        std::cout << "Running CPU SpMV kernel..." << std::endl;
+        xsparse::ComputeSPMVELL<DType>(
+            spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
+            spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
+
+        std::cout << "Checking results..." << std::endl;
+        int count = 0;
+        for (int i = 0; i < M; ++i)
+        {
+            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
+            {
+                std::cout << "Results mismatch at " << i << ": " << ovec[i]
+                          << " != " << ovec_ref[i] << std::endl;
+            }
+        }
+        if (count == 0)
+        {
+            std::cout << "Results match!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Results mismatched " << count << " times in total."
+                      << std::endl;
+        }
 
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
