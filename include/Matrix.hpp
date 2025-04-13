@@ -13,7 +13,8 @@
 
 #include "Math.hpp"
 
-#define IdxType uint32_t
+#define IdxType       uint32_t
+#define ELLZeroIdxVal 2294967295U
 
 using namespace std;
 
@@ -208,7 +209,7 @@ public:
     MInfoType mInfo;  // Matrix information
 
 public:
-    DMatrix() noexcept : BaseMatrix<DType>(), mInfo{0}
+    DMatrix() noexcept : BaseMatrix<DType>(), mInfo{}
     {
     }
 
@@ -300,7 +301,7 @@ public:
     MInfoType mInfo;  // Matrix information
 
 public:
-    SPMatrixCOO() noexcept : BaseMatrix<DType>(), mInfo{0}
+    SPMatrixCOO() noexcept : BaseMatrix<DType>(), mInfo{}
     {
     }
 
@@ -491,7 +492,7 @@ public:
     MInfoType mInfo;  // Matrix information
 
 public:
-    SPMatrixCSR() noexcept : BaseMatrix<DType>(), mInfo{0}
+    SPMatrixCSR() noexcept : BaseMatrix<DType>(), mInfo{}
     {
     }
 
@@ -639,6 +640,245 @@ public:
         return mInfo.nnz;
     }
 };  // class SPMatrixCSR
+
+//
+// Sparse Matrix - ELL
+//
+
+template <>
+struct MatInfo<SPMatF, SPMatF::SPMatFormatELL>
+{
+    IdxType nnz = 0;  // Number of non-zero elements
+    IdxType numRows = 0;  // Number of rows
+    IdxType maxCol = 0;  // Maximum number of non-zero elements in a row
+
+    std::unique_ptr<IdxType[]> idxMat = nullptr;  // Column indices
+
+    static constexpr const char *GetFormatName()
+    {
+        return "ELL";
+    }
+};
+
+template <typename DType>
+class SPMatrixELL : public BaseMatrix<DType>
+{
+    typedef MatInfo<SPMatF, SPMatF::SPMatFormatELL>
+        MInfoType;  // Matrix information type
+public:
+    MInfoType mInfo;  // Matrix information
+
+public:
+    SPMatrixELL() noexcept : BaseMatrix<DType>(), mInfo{}
+    {
+    }
+
+    ~SPMatrixELL() noexcept override = default;
+
+    bool CreateRamdomly(
+        const IdxType m, const IdxType n, const float prob,
+        const bool isRuntimeRandom) override
+    {
+        cerr << "ELL:CreateRamdomly not implemented!" << endl;
+        return false;
+    }
+
+    bool CreateFromCOO(const SPMatrixCOO<DType> &matCoo)
+    {
+        if (this->IsCreated())
+        {
+            cerr << "SPMatrixELL already created!" << endl;
+            return false;
+        }
+        if (!matCoo.IsCreated() || !matCoo.IsSorted())
+        {
+            if (!matCoo.IsCreated())
+                cerr << "SPMatrixCOO not created!" << endl;
+            if (!matCoo.IsSorted())
+                cerr << "SPMatrixCOO not sorted!" << endl;
+            return false;
+        }
+
+        this->m = matCoo.GetRows();
+        this->n = matCoo.GetCols();
+        this->mInfo.nnz = matCoo.mInfo.nnz;
+
+        this->mInfo.numRows = matCoo.GetRows();
+
+        // Count the maximum number of non-zero elements in a row
+        IdxType mMaxCol = 0;
+        {
+            IdxType curMaxCol = 0;
+            IdxType curRowIdx = matCoo.mInfo.rowIdx[0];
+            for (IdxType i = 0; i < this->mInfo.nnz; ++i)
+            {
+                if (matCoo.mInfo.rowIdx[i] == curRowIdx)
+                {
+                    ++curMaxCol;
+                }
+                else
+                {
+                    mMaxCol = max(mMaxCol, curMaxCol);
+                    curRowIdx = matCoo.mInfo.rowIdx[i];
+                    curMaxCol = 1;
+                }
+            }
+            mMaxCol = max(mMaxCol, curMaxCol);
+        }
+
+        this->mInfo.maxCol = mMaxCol;
+        this->mInfo.idxMat = make_unique<IdxType[]>(mMaxCol * this->mInfo.numRows);
+        this->data = make_unique<DType[]>(mMaxCol * this->mInfo.numRows);
+
+        {
+            // Assign the first value of each row as ELLZeroIdxVal, representing no value
+            for (IdxType i = 0; i < this->mInfo.numRows; ++i)
+                this->mInfo.idxMat[i * mMaxCol] = ELLZeroIdxVal;
+
+            IdxType curRowIdx = matCoo.mInfo.rowIdx[0];
+            IdxType *iPtr = this->mInfo.idxMat.get() + curRowIdx * mMaxCol;
+            DType *dPtr = this->data.get() + curRowIdx * mMaxCol;
+
+            IdxType cooRowIdx = 0u;
+            IdxType cooColIdx = 0u;
+            IdxType colCount = 0u;
+            for (IdxType cooIdx = 0; cooIdx < this->mInfo.nnz; ++cooIdx)
+            {
+                cooRowIdx = matCoo.mInfo.rowIdx[cooIdx];
+                cooColIdx = matCoo.mInfo.colIdx[cooIdx];
+                if (curRowIdx == cooRowIdx) [[likely]]
+                {
+                    *iPtr = cooColIdx;
+                    *dPtr = matCoo.data[cooIdx];
+                    iPtr++;
+                    dPtr++;
+                    colCount += 1;
+                }
+                else [[unlikely]]
+                {
+                    // Transfer the current row to another row
+                    assertm(
+                        colCount <= mMaxCol, "Error: Column count exceeds maximum!");
+                    if (colCount < mMaxCol) [[likely]]
+                    {
+                        *iPtr = ELLZeroIdxVal;
+                    }
+                    iPtr = this->mInfo.idxMat.get() + cooRowIdx * mMaxCol;
+                    dPtr = this->data.get() + cooRowIdx * mMaxCol;
+                    curRowIdx = cooRowIdx;
+
+                    // Assignment
+                    *iPtr = cooColIdx;
+                    *dPtr = matCoo.data[cooIdx];
+                    iPtr++;
+                    dPtr++;
+                    colCount = 1;
+                }
+            }
+        }
+
+        this->isCreated = true;
+        return true;
+    }
+
+    [[nodiscard]] DType operator()(const IdxType i, const IdxType j) const override
+    {
+        assertm(
+            i < this->m && j < this->n && i >= 0 && j >= 0,
+            "Error: Index out of bounds! Please check the indices.");
+        if (!this->IsCreated()) [[unlikely]]
+        {
+            cerr << "Matrix not created!" << endl;
+            return 0;
+        }
+
+        IdxType *rowPtr = this->mInfo.idxMat.get() + i * this->mInfo.maxCol;
+        for (IdxType icol = 0; icol < this->mInfo.maxCol; ++icol)
+        {
+            if (rowPtr[icol] == j) [[likely]]
+            {
+                return this->data[i * this->mInfo.maxCol + icol];
+            }
+            else if (rowPtr[icol] == ELLZeroIdxVal) [[unlikely]]
+            {
+                break;  // No more non-zero elements in this row
+            }
+        }
+
+        return 0;
+    }
+
+    bool IsCreated() const override
+    {
+        return this->isCreated && this->m > 0 && this->n > 0 &&
+               this->data.get() != nullptr && this->mInfo.idxMat.get() != nullptr &&
+               this->mInfo.nnz > 0 && this->mInfo.numRows > 0 && this->mInfo.maxCol > 0;
+    }
+
+    bool Destroy() override
+    {
+        if (!this->IsCreated())
+        {
+            cerr << "SPMatrixELL not created!" << endl;
+            return false;
+        }
+        this->data.reset();  // Release the memory
+        this->mInfo.idxMat.reset();
+        this->m = 0;
+        this->n = 0;
+        this->mInfo.nnz = 0;
+        this->mInfo.numRows = 0;
+        this->mInfo.maxCol = 0;
+        this->isCreated = false;  // Reset the created flag
+        return true;
+    }
+
+    void PrintELL() const
+    {
+        if (!this->IsCreated())
+        {
+            cerr << "Matrix not created!" << endl;
+            return;
+        }
+
+        IdxType rows = this->GetRows();
+        IdxType cols = this->GetCols();
+        cout << "Matrix(" << rows << ", " << cols << ") NNZ: " << this->mInfo.nnz
+             << endl;
+        cout << "IdxMat:" << endl;
+        for (IdxType i = 0; i < rows; ++i)
+        {
+            for (IdxType j = 0; j < this->mInfo.maxCol; ++j)
+            {
+                cout << std::setw(6) << std::setprecision(4) << std::fixed;
+                cout << this->mInfo.idxMat[i * this->mInfo.maxCol + j] << " ";
+            }
+            cout << endl;
+        }
+        cout << "DataMat:" << endl;
+        for (IdxType i = 0; i < rows; ++i)
+        {
+            for (IdxType j = 0; j < this->mInfo.maxCol; ++j)
+            {
+                cout << std::setw(6) << std::setprecision(4) << std::fixed;
+                cout << this->data[i * this->mInfo.maxCol + j] << " ";
+            }
+            cout << endl;
+        }
+        cout << endl;
+    }
+
+    [[nodiscard]] inline IdxType GetNNZ() const
+    {
+        return mInfo.nnz;
+    }
+
+    [[nodiscard]] inline IdxType GetMaxCol() const
+    {
+        return mInfo.maxCol;
+    }
+
+};  // class SPMatrixELL
 
 }  // namespace xsparse
 

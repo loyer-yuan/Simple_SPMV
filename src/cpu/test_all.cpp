@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         std::cerr << "Failed to create SPMatrixCOO!" << std::endl;
         return -1;
     }
-#if IsPrint && 0
+#if IsPrint
     spMatCOO.PrintCOO();
 #endif
 #if IsPrint
@@ -189,6 +189,29 @@ int main(int argc, char *argv[])
             std::cout << "Results mismatched " << count << " times in total."
                       << std::endl;
         }
+
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+    }
+
+    //
+    // Test ELL kernel
+    //
+    {
+        std::cout << "Test ELL kernel." << std::endl;
+
+        std::vector<DType> ovec(M);
+
+        xsparse::SPMatrixELL<DType> spMatELL;
+        if (!spMatELL.CreateFromCOO(spMatCOO))
+        {
+            std::cerr << "Failed to create SPMatrixELL!" << std::endl;
+            return -1;
+        }
+// #if IsPrint && 0
+        spMatELL.PrintELL();
+        spMatELL.PrintMat();
+// #endif
 
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
