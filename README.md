@@ -14,14 +14,19 @@ GPU naive kernel:
 - [ ] CSR5
 
 CPU naive kernel:
-- [ ] DIA
+- [X] DIA
+- [X] ELL
+- [X] CSR(scalar)
+- [ ] CSR(vector)
+- [X] COO(segment)
+
+CPU vectorized kernel:
 - [ ] ELL
 - [ ] CSR(scalar)
 - [ ] CSR(vector)
 - [ ] COO(segment)
 
 CPU cross-NUMA node optimized kernel:
-- [ ] DIA
 - [ ] ELL
 - [ ] CSR(scalar)
 - [ ] CSR(vector)
