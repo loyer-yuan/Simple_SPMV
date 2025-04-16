@@ -1,0 +1,1 @@
+add_library(mmio STATIC mmio.h mmio.c)

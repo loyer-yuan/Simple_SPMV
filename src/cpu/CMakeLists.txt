@@ -25,6 +25,7 @@ add_executable(cpu_test_all
 target_link_libraries(cpu_test_all PRIVATE
     cpu_spmv
     Threads::Threads
+    mmio
 )
 set_target_properties(cpu_test_all PROPERTIES
     VERSION ${PROJECT_VERSION}

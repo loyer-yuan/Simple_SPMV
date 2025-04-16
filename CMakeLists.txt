@@ -22,4 +22,6 @@ set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
 set(TEST_INSTALL_BASE "${PROJECT_SOURCE_DIR}/bin/test")
 
 include_directories("${PROJECT_SOURCE_DIR}/include")
+include_directories("${PROJECT_SOURCE_DIR}/external")
+add_subdirectory(external)
 add_subdirectory(src)

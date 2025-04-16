@@ -12,6 +12,7 @@
 #include <string>
 
 #include "Math.hpp"
+#include "mmio/mmio.h"
 
 #define IdxType       uint32_t
 #define ELLZeroIdxVal 2294967295U
@@ -345,10 +346,150 @@ public:
         return true;
     }
 
-    bool CreateFromCOOFile(const string &filename)
+    bool CreateFromFile(const string &filename)
     {
-        cerr << "CreateFromCOOFile not implemented!" << endl;
-        return false;
+        MM_typecode matcode;
+        FILE *f = fopen(filename.c_str(), "r");
+        IdxType lM, lN, lNNZ;
+
+        if (f == nullptr)
+        {
+            cerr << "Error: Could not open file!" << endl;
+            return false;
+        }
+        if (mm_read_banner(f, &matcode) != 0)
+        {
+            cerr << "Error: Could not process Matrix Market banner!" << endl;
+            fclose(f);
+            return false;
+        }
+
+        // clang-format off
+        if (!mm_is_valid(matcode) &&
+            !mm_is_matrix(matcode) && !mm_is_coordinate(matcode) &&
+            !(mm_is_real(matcode) || mm_is_integer(matcode) || mm_is_pattern(matcode)) &&
+            !(mm_is_general(matcode) || mm_is_symmetric(matcode)))
+        // clang-format on
+        {
+            cerr << "Error: Unsupported Matrix Market type!" << endl;
+            fclose(f);
+            return false;
+        }
+
+        typedef struct
+        {
+            IdxType rowIdx;
+            IdxType colIdx;
+            DType value;
+        } Element;
+
+        {
+            int m, n, nnz;
+            if (mm_read_mtx_crd_size(f, &m, &n, &nnz) != 0)
+            {
+                cerr << "Error: Could not parse matrix size!" << endl;
+                fclose(f);
+                return false;
+            }
+            lM = static_cast<IdxType>(m);
+            lN = static_cast<IdxType>(n);
+            lNNZ = static_cast<IdxType>(nnz);
+            if (lM <= 0 || lN <= 0 || lNNZ <= 0)
+            {
+                cerr << "Error: Invalid matrix size!" << endl;
+                fclose(f);
+                return false;
+            }
+        }
+        vector<Element> elements(lNNZ);
+
+        cout << "Reading COO file..." << endl;
+        IdxType lrowIdx, lcolIdx;
+        if (mm_is_pattern(matcode))
+        {
+            for (IdxType i = 0; i < lNNZ; ++i)
+            {
+                fscanf(f, "%u %u\n", &lrowIdx, &lcolIdx);
+                elements[i].rowIdx = lrowIdx - 1;  // Convert to 0-based index
+                elements[i].colIdx = lcolIdx - 1;  // Convert to 0-based index
+            }
+        }
+        else if (mm_is_integer(matcode))
+        {
+            int val = 0;
+            for (IdxType i = 0; i < lNNZ; ++i)
+            {
+                fscanf(f, "%u %u %d\n", &lrowIdx, &lcolIdx, &val);
+                elements[i].rowIdx = lrowIdx - 1;  // Convert to 0-based index
+                elements[i].colIdx = lcolIdx - 1;  // Convert to 0-based index
+                elements[i].value = static_cast<DType>(val);
+            }
+        }
+        else if (mm_is_real(matcode))
+        {
+            double val = 0.0;
+            for (IdxType i = 0; i < lNNZ; ++i)
+            {
+                fscanf(f, "%u %u %lg\n", &lrowIdx, &lcolIdx, &val);
+                elements[i].rowIdx = lrowIdx - 1;  // Convert to 0-based index
+                elements[i].colIdx = lcolIdx - 1;  // Convert to 0-based index
+                elements[i].value = static_cast<DType>(val);
+            }
+        }
+        else [[unlikely]]
+        {
+            cerr << "Error: Unsupported data type!" << endl;
+            fclose(f);
+            return false;
+        }
+        fclose(f);
+
+        cout << "Sorting the data..." << endl;
+        // Sort the elements based on row and column indices
+        std::sort(
+            elements.begin(), elements.end(),
+            [](const Element &a, const Element &b)
+            {
+                if (a.rowIdx != b.rowIdx)
+                    return a.rowIdx < b.rowIdx;
+                return a.colIdx < b.colIdx;
+            });
+
+        cout << "Copy the data..." << endl;
+        this->m = lM;
+        this->n = lN;
+        this->mInfo.nnz = lNNZ;
+        this->mInfo.rowIdx = make_unique<IdxType[]>(lNNZ);
+        this->mInfo.colIdx = make_unique<IdxType[]>(lNNZ);
+        this->data = make_unique<DType[]>(lNNZ);
+        if (mm_is_pattern(matcode))
+        {
+            for (IdxType i = 0; i < lNNZ; ++i)
+            {
+                this->mInfo.rowIdx[i] = elements[i].rowIdx;
+                this->mInfo.colIdx[i] = elements[i].colIdx;
+                this->data[i] = 1.01f;  // Set value to 1 for pattern matrix
+            }
+        }
+        else
+        {
+            for (IdxType i = 0; i < lNNZ; ++i)
+            {
+                this->mInfo.rowIdx[i] = elements[i].rowIdx;
+                this->mInfo.colIdx[i] = elements[i].colIdx;
+                this->data[i] = elements[i].value;
+            }
+        }
+
+        this->isCreated = true;
+        this->isSorted = (is_sorted(
+            this->mInfo.rowIdx.get(), this->mInfo.rowIdx.get() + this->mInfo.nnz));
+        assertm(
+            this->isSorted,
+            "Error: Generated indices are not sorted! "
+            "Please check the data generation process.");
+        cout << "Matrix created from file(" << filename << ") successfully!" << endl;
+        return true;
     }
 
     [[nodiscard]] DType operator()(const IdxType i, const IdxType j) const override
