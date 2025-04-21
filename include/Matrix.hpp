@@ -601,6 +601,21 @@ public:
         cout << endl;
     }
 
+    [[nodiscard]] inline size_t GetEffectiveSizeInBytes() const
+    {
+        return this->mInfo.nnz * sizeof(DType);
+    }
+
+    [[nodiscard]] inline size_t GetAllSizeInBytes() const
+    {
+        return this->mInfo.nnz * (sizeof(DType) + sizeof(IdxType) * 2);
+    }
+
+    [[nodiscard]] inline size_t GetTheoreticalFlops() const
+    {
+        return this->mInfo.nnz * 2;  // 2 flops for each non-zero element
+    }
+
 private:
     bool isSorted = false;  // Flag to check if the matrix is row-major sorted
 
@@ -779,6 +794,22 @@ public:
     [[nodiscard]] inline IdxType GetNNZ() const
     {
         return mInfo.nnz;
+    }
+
+    [[nodiscard]] inline size_t GetEffectiveSizeInBytes() const
+    {
+        return this->mInfo.nnz * sizeof(DType);
+    }
+
+    [[nodiscard]] inline size_t GetAllSizeInBytes() const
+    {
+        return this->mInfo.nnz * (sizeof(DType) + sizeof(IdxType)) +
+               (this->m + 1) * sizeof(IdxType);
+    }
+
+    [[nodiscard]] inline size_t GetTheoreticalFlops() const
+    {
+        return this->mInfo.nnz * 2;  // 2 flops for each non-zero element
     }
 };  // class SPMatrixCSR
 
@@ -1019,6 +1050,21 @@ public:
         return mInfo.maxCol;
     }
 
+    [[nodiscard]] inline size_t GetEffectiveSizeInBytes() const
+    {
+        return this->mInfo.nnz * sizeof(DType);
+    }
+
+    [[nodiscard]] inline size_t GetAllSizeInBytes() const
+    {
+        return this->mInfo.numRows * this->mInfo.maxCol *
+               (sizeof(DType) + sizeof(IdxType));
+    }
+
+    [[nodiscard]] inline size_t GetTheoreticalFlops() const
+    {
+        return this->mInfo.nnz * 2;  // 2 flops for each non-zero element
+    }
 };  // class SPMatrixELL
 
 }  // namespace xsparse

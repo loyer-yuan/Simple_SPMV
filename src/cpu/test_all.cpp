@@ -5,8 +5,49 @@
 #include "Math.hpp"
 #include "Matrix.hpp"
 #include "Ops.h"
+#include "PerfUtils.hpp"
 
 #define DType float
+
+#define PerfFunc(kernel, SPmat)                                                       \
+    {                                                                                 \
+        const int LoopCount = 1000;                                                   \
+        xsparse::Timer timer;                                                         \
+        for (int i = 0; i < 100; ++i)                                                 \
+        {                                                                             \
+            kernel;                                                                   \
+        }                                                                             \
+        timer.start();                                                                \
+        for (int i = 0; i < LoopCount; ++i)                                           \
+        {                                                                             \
+            kernel;                                                                   \
+        }                                                                             \
+        timer.stop();                                                                 \
+        double mTime = timer.elapsed<std::chrono::nanoseconds>() / (double)1e6;       \
+        double mFlops =                                                               \
+            (SPmat.GetTheoreticalFlops() * double(LoopCount) * 1000.0) / mTime;       \
+        double mEBandwidth =                                                          \
+            (SPmat.GetEffectiveSizeInBytes() * double(LoopCount) * 1000.0) / mTime;   \
+        double mABandwidth =                                                          \
+            (SPmat.GetAllSizeInBytes() * double(LoopCount) * 1000.0) / mTime;         \
+        std::cout << "Time:\t\t\t\t\t" << mTime / double(LoopCount) << " ms"          \
+                  << std::endl;                                                       \
+        std::cout << "Flops/s:\t\t\t\t" << mFlops / 1024.0 / 1024.0 / 1024.0          \
+                  << " GFlops/s" << std::endl;                                        \
+        std::cout << "Effective Bandwidth: \t"                                        \
+                  << mEBandwidth / 1024.0 / 1024.0 / 1024.0 << " GB/s" << std::endl;  \
+        std::cout << "Total Glops:\t\t\t"                                             \
+                  << SPmat.GetTheoreticalFlops() / 1024.0 / 1024.0 / 1024.0           \
+                  << " GFlops" << std::endl;                                          \
+        std::cout << "Effective Size:\t\t\t"                                          \
+                  << SPmat.GetEffectiveSizeInBytes() / 1024.0 / 1024.0 / 1024.0       \
+                  << " GB" << std::endl;                                              \
+        std::cout << "All Size:\t\t\t\t"                                              \
+                  << SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0 / 1024.0 << " GB"    \
+                  << std::endl;                                                       \
+        std::cout << "All Bandwidth:\t\t\t" << mABandwidth / 1024.0 / 1024.0 / 1024.0 \
+                  << " GB/s" << std::endl;                                            \
+    }
 
 void PrintUsage()
 {
@@ -249,10 +290,16 @@ int main(int argc, char *argv[])
         std::vector<DType> ovec(M);
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        xsparse::ComputeSPMVCOO<DType>(
-            spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
-            spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
-            spMatCOO.n, spMatCOO.mInfo.nnz);
+        // xsparse::ComputeSPMVCOO<DType>(
+        //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+        //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
+        //     spMatCOO.n, spMatCOO.mInfo.nnz);
+        PerfFunc(
+            xsparse::ComputeSPMVCOO<DType>(
+                spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+                spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
+                spMatCOO.n, spMatCOO.mInfo.nnz),
+            spMatCOO);
 
         if (useCOORef)
         {
@@ -305,10 +352,17 @@ int main(int argc, char *argv[])
         std::cout << "Running CPU SpMV kernel..." << std::endl;
 
         std::vector<DType> ovec(M);
-        xsparse::ComputeSPMVCSR<DType>(
-            spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
-            spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
-            spMatCSR.n);
+        // xsparse::ComputeSPMVCSR<DType>(
+        //     spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+        //     spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
+        //     spMatCSR.n);
+        PerfFunc(
+            xsparse::ComputeSPMVCSR<DType>(
+                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
+                spMatCSR.n),
+            spMatCSR);
+
         std::cout << "Checking results..." << std::endl;
         int count = 0;
         for (int i = 0; i < M; ++i)
@@ -353,9 +407,14 @@ int main(int argc, char *argv[])
             spMatELL.PrintMat();
         }
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        xsparse::ComputeSPMVELL<DType>(
-            spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
-            spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
+        // xsparse::ComputeSPMVELL<DType>(
+        //     spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
+        //     spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
+        PerfFunc(
+            xsparse::ComputeSPMVELL<DType>(
+                spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
+                ovec.data(), spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol),
+            spMatELL);
 
         std::cout << "Checking results..." << std::endl;
         int count = 0;
