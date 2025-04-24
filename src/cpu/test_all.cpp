@@ -91,8 +91,8 @@ void PrintUsage()
 }
 
 bool ParseArgs(
-    int argc, char *argv[], int &M, int &K, double &PROB, bool &isPrint, bool &useFile,
-    std::string &inputFileName, bool &useCSRRef)
+    int argc, char *argv[], uint &M, uint &K, double &PROB, bool &isPrint,
+    bool &useFile, std::string &inputFileName, bool &useCSRRef)
 {
     if (argc < 2)
     {
@@ -110,7 +110,7 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -m option." << std::endl;
                 return false;
             }
-            M = std::stoi(argv[++i]);
+            M = std::stoul(argv[++i]);
             if (M <= 0)
             {
                 std::cerr << "Error: Invalid value for -m option." << std::endl;
@@ -124,7 +124,7 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -k option." << std::endl;
                 return false;
             }
-            K = std::stoi(argv[++i]);
+            K = std::stoul(argv[++i]);
             if (K <= 0)
             {
                 std::cerr << "Error: Invalid value for -k option." << std::endl;
@@ -199,8 +199,8 @@ int main(int argc, char *argv[])
     //
     // Parameters
     //
-    int M = 0;
-    int K = 0;
+    uint M = 0;
+    uint K = 0;
     double PROB = 0.0;
     bool isPrint = false;
     bool useFile = false;
