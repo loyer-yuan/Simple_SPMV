@@ -1,4 +1,5 @@
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -10,44 +11,56 @@
 
 #define DType float
 
-#define PerfFunc(kernel, SPmat)                                                       \
-    {                                                                                 \
-        const int LoopCount = 1000;                                                   \
-        xsparse::Timer timer;                                                         \
-        for (int i = 0; i < 100; ++i)                                                 \
-        {                                                                             \
-            kernel;                                                                   \
-        }                                                                             \
-        timer.start();                                                                \
-        for (int i = 0; i < LoopCount; ++i)                                           \
-        {                                                                             \
-            kernel;                                                                   \
-        }                                                                             \
-        timer.stop();                                                                 \
-        double mTime = timer.elapsed<std::chrono::nanoseconds>() / (double)1e6;       \
-        double mFlops =                                                               \
-            (SPmat.GetTheoreticalFlops() * double(LoopCount) * 1000.0) / mTime;       \
-        double mEBandwidth =                                                          \
-            (SPmat.GetEffectiveSizeInBytes() * double(LoopCount) * 1000.0) / mTime;   \
-        double mABandwidth =                                                          \
-            (SPmat.GetAllSizeInBytes() * double(LoopCount) * 1000.0) / mTime;         \
-        std::cout << "Time:\t\t\t\t\t" << mTime / double(LoopCount) << " ms"          \
-                  << std::endl;                                                       \
-        std::cout << "Flops/s:\t\t\t\t" << mFlops / 1024.0 / 1024.0 / 1024.0          \
-                  << " GFlops/s" << std::endl;                                        \
-        std::cout << "Effective Bandwidth: \t"                                        \
-                  << mEBandwidth / 1024.0 / 1024.0 / 1024.0 << " GB/s" << std::endl;  \
-        std::cout << "Total Glops:\t\t\t"                                             \
-                  << SPmat.GetTheoreticalFlops() / 1024.0 / 1024.0 / 1024.0           \
-                  << " GFlops" << std::endl;                                          \
-        std::cout << "Effective Size:\t\t\t"                                          \
-                  << SPmat.GetEffectiveSizeInBytes() / 1024.0 / 1024.0 / 1024.0       \
-                  << " GB" << std::endl;                                              \
-        std::cout << "All Size:\t\t\t\t"                                              \
-                  << SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0 / 1024.0 << " GB"    \
-                  << std::endl;                                                       \
-        std::cout << "All Bandwidth:\t\t\t" << mABandwidth / 1024.0 / 1024.0 / 1024.0 \
-                  << " GB/s" << std::endl;                                            \
+// 定义固定宽度常量（根据实际需求调整）
+constexpr int LABEL_WIDTH = 20;  // 标签部分占用宽度
+constexpr int VALUE_WIDTH = 15;  // 数值部分占用宽度
+
+// 辅助函数：格式化数值到字符串（固定精度）
+template <typename T>
+std::string format_value(T value, int precision = 6)
+{
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(precision) << value;
+    return oss.str();
+}
+
+#define FormatOutput(name, value, unit)                                        \
+    std::cout << std::left << std::setw(LABEL_WIDTH) << name ":" << std::right \
+              << std::setw(VALUE_WIDTH) << format_value((value)) << " " unit   \
+              << std::endl;
+
+#define PerfFunc(kernel, SPmat)                                                        \
+    {                                                                                  \
+        const int LoopCount = 1000;                                                    \
+        xsparse::Timer timer;                                                          \
+        for (int i = 0; i < 100; ++i)                                                  \
+        {                                                                              \
+            kernel;                                                                    \
+        }                                                                              \
+        timer.start();                                                                 \
+        for (int i = 0; i < LoopCount; ++i)                                            \
+        {                                                                              \
+            kernel;                                                                    \
+        }                                                                              \
+        timer.stop();                                                                  \
+        double mTime = timer.elapsed<std::chrono::nanoseconds>() / (double)1e9;        \
+        double mFlops = (SPmat.GetTheoreticalFlops() * double(LoopCount)) / mTime;     \
+        double mEBandwidth =                                                           \
+            (SPmat.GetEffectiveSizeInBytes() * double(LoopCount)) / mTime;             \
+        double mABandwidth = (SPmat.GetAllSizeInBytes() * double(LoopCount)) / mTime;  \
+        FormatOutput("Time", mTime * 1000 / double(LoopCount), "ms");                  \
+        FormatOutput("Flops/s", mFlops / 1024.0 / 1024.0 / 1024.0, "GFlops/s");        \
+        FormatOutput(                                                                  \
+            "Effective Bandwidth", mEBandwidth / 1024.0 / 1024.0 / 1024.0, "GB/s");    \
+        FormatOutput(                                                                  \
+            "Total GFlops", SPmat.GetTheoreticalFlops() / 1024.0 / 1024.0 / 1024.0,    \
+            "GFlops");                                                                 \
+        FormatOutput(                                                                  \
+            "Effective Size",                                                          \
+            SPmat.GetEffectiveSizeInBytes() / 1024.0 / 1024.0 / 1024.0, "GB");         \
+        FormatOutput(                                                                  \
+            "All Size", SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0 / 1024.0, "GB");   \
+        FormatOutput("All Bandwidth", mABandwidth / 1024.0 / 1024.0 / 1024.0, "GB/s"); \
     }
 
 void PrintUsage()
@@ -56,7 +69,7 @@ void PrintUsage()
         "\n"
         "======================================================================\n"
         "   Usage   : test_all  [-m <int>] [-k <int>] [-prob <float>]\n"
-        "                       [-p] [-f <string>] [-cooRef]\n"
+        "                       [-p] [-f <string>] [-csrRef]\n"
 
         "           -m          Number of rows in the matrix (default: 5)\n"
 
@@ -69,7 +82,7 @@ void PrintUsage()
         "           -f          Input file name. If set, M, K, prob would be\n"
         "                       overwritten \n"
 
-        "           -cooRef   Use COO result as reference (default: false)\n"
+        "           -csrRef   Use COO result as reference (default: false)\n"
 
         "           -h          Print this help message\n"
         "======================================================================\n";
@@ -79,7 +92,7 @@ void PrintUsage()
 
 bool ParseArgs(
     int argc, char *argv[], int &M, int &K, double &PROB, bool &isPrint, bool &useFile,
-    std::string &inputFileName, bool &useCOORef)
+    std::string &inputFileName, bool &useCSRRef)
 {
     if (argc < 2)
     {
@@ -146,9 +159,9 @@ bool ParseArgs(
             useFile = true;
             inputFileName = argv[++i];
         }
-        else if (arg == "-cooRef")
+        else if (arg == "-csrRef")
         {
-            useCOORef = true;
+            useCSRRef = true;
         }
         else
         {
@@ -191,10 +204,10 @@ int main(int argc, char *argv[])
     double PROB = 0.0;
     bool isPrint = false;
     bool useFile = false;
-    bool useCOORef = false;
+    bool useCSRRef = false;
     std::string inputFileName;
 
-    if (!ParseArgs(argc, argv, M, K, PROB, isPrint, useFile, inputFileName, useCOORef))
+    if (!ParseArgs(argc, argv, M, K, PROB, isPrint, useFile, inputFileName, useCSRRef))
     {
         return -1;
     }
@@ -266,7 +279,7 @@ int main(int argc, char *argv[])
     std::cout << "Running reference SpMV kernel..." << std::endl;
     std::cout << std::endl;
 
-    if (!useCOORef)
+    if (!useCSRRef)
     {
         MVRef(spMatCOO, ivec, ovec_ref);
 
@@ -279,55 +292,6 @@ int main(int argc, char *argv[])
             }
             std::cout << "\n" << std::endl;
         }
-        std::cout << "----------------------------------------" << std::endl;
-    }
-
-    //
-    // Test COO kernel
-    //
-    {
-        std::cout << "Test COO kernel." << std::endl;
-
-        std::vector<DType> ovec(M);
-
-        std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVCOO<DType>(
-        //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
-        //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
-        //     spMatCOO.n, spMatCOO.mInfo.nnz);
-        PerfFunc(
-            xsparse::ComputeSPMVCOO<DType>(
-                spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
-                spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
-                spMatCOO.n, spMatCOO.mInfo.nnz),
-            spMatCOO);
-
-        if (useCOORef)
-        {
-            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(DType));
-            std::cout << "\nUsing COO result as reference!\n" << std::endl;
-        }
-        std::cout << "Checking results..." << std::endl;
-        int count = 0;
-        for (int i = 0; i < M; ++i)
-        {
-            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
-            {
-                std::cout << "Results mismatch at " << i << ": " << ovec[i]
-                          << " != " << ovec_ref[i] << std::endl;
-            }
-        }
-        if (count == 0)
-        {
-            std::cout << "Results match!" << std::endl;
-        }
-        else
-        {
-            std::cout << "Results mismatched " << count << " times in total."
-                      << std::endl;
-        }
-
-        std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
 
@@ -363,6 +327,56 @@ int main(int argc, char *argv[])
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
                 spMatCSR.n),
             spMatCSR);
+
+        if (useCSRRef)
+        {
+            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(DType));
+            std::cout << "\nUsing CSR result as reference!\n" << std::endl;
+        }
+
+        std::cout << "Checking results..." << std::endl;
+        int count = 0;
+        for (int i = 0; i < M; ++i)
+        {
+            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
+            {
+                std::cout << "Results mismatch at " << i << ": " << ovec[i]
+                          << " != " << ovec_ref[i] << std::endl;
+            }
+        }
+        if (count == 0)
+        {
+            std::cout << "Results match!" << std::endl;
+        }
+        else
+        {
+            std::cout << "Results mismatched " << count << " times in total."
+                      << std::endl;
+        }
+
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+    }
+
+    //
+    // Test COO kernel
+    //
+    {
+        std::cout << "Test COO kernel." << std::endl;
+
+        std::vector<DType> ovec(M);
+
+        std::cout << "Running CPU SpMV kernel..." << std::endl;
+        // xsparse::ComputeSPMVCOO<DType>(
+        //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+        //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
+        //     spMatCOO.n, spMatCOO.mInfo.nnz);
+        PerfFunc(
+            xsparse::ComputeSPMVCOO<DType>(
+                spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+                spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
+                spMatCOO.n, spMatCOO.mInfo.nnz),
+            spMatCOO);
 
         std::cout << "Checking results..." << std::endl;
         int count = 0;
