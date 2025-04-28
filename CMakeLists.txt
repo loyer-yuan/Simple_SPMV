@@ -14,6 +14,9 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 # Requires C++20.
 set(CMAKE_CXX_STANDARD 20)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
+find_package(ARMPL REQUIRED)
+
 ##
 ### Project build.
 ##
