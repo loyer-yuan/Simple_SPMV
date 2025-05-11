@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
         std::cout << "----------------------------------------" << std::endl;
 
         // Test CSR kernel with ArmPL
-        std::cout << "ArmPL: Test CSR kernel." << std::endl;
+        std::cout << "Test ArmPL CSR kernel.\n" << std::endl;
         xsparse::ArmPL<xsparse::SPMatF::SPMatFormatCSR, TestDType> armplCSRKernel;
         if (!armplCSRKernel.Initialize(
                 spMatCSR.m, spMatCSR.n, spMatCSR.mInfo.nnz, spMatCSR.data.get(),
@@ -376,16 +376,16 @@ int main(int argc, char *argv[])
         }
         std::vector<TestDType> ovec_armpl(M);
 
-        std::cout << "ArmPL: Running SpMV kernel..." << std::endl;
+        std::cout << "Running SpMV kernel..." << std::endl;
 
         // armplCSRKernel.Run(ivec.data(), ovec_armpl.data());
         PerfFunc(armplCSRKernel.Run(ivec.data(), ovec_armpl.data()), spMatCSR);
 
-        std::cout << "ArmPL: Checking results..." << std::endl;
+        std::cout << "Checking results..." << std::endl;
         CheckResult(ovec_armpl, ovec_ref);
 
         armplCSRKernel.Destroy();
-        std::cout << "ArmPL: End of test!" << std::endl;
+        std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
 
@@ -412,6 +412,29 @@ int main(int argc, char *argv[])
         std::cout << "Checking results..." << std::endl;
         CheckResult(ovec, ovec_ref);
 
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+
+        // Test COO kernel with ArmPL
+        std::cout << "Test ArmPL COO kernel.\n" << std::endl;
+        xsparse::ArmPL<xsparse::SPMatF::SPMatFormatCOO, TestDType> armplCOOKernel;
+        if (!armplCOOKernel.Initialize(
+                spMatCOO.m, spMatCOO.n, spMatCOO.mInfo.nnz, spMatCOO.data.get(),
+                spMatCOO.mInfo.rowIdx.get(), spMatCOO.mInfo.colIdx.get()))
+        {
+            std::cerr << "Failed to create ArmPL COO matrix!" << std::endl;
+            return -1;
+        }
+        std::vector<TestDType> ovec_armpl(M);
+
+        std::cout << "Running SpMV kernel..." << std::endl;
+        // armplCOOKernel.Run(ivec.data(), ovec_armpl.data());
+        PerfFunc(armplCOOKernel.Run(ivec.data(), ovec_armpl.data()), spMatCOO);
+
+        std::cout << "Checking results..." << std::endl;
+        CheckResult(ovec_armpl, ovec_ref);
+
+        armplCOOKernel.Destroy();
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }

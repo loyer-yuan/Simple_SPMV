@@ -39,8 +39,9 @@ template <typename DType>
 struct OpC<EMatType::ESPMatFormat::SPMatFormatCSR, DType>
 {
     static armpl_status_t create(
-        armpl_spmat_t *A, armpl_int_t m, armpl_int_t n, const armpl_int_t *row_ptr,
-        const armpl_int_t *col_indx, const DType *vals, int32_t flags)
+        armpl_spmat_t *A, armpl_int_t m, armpl_int_t n, armpl_int_t nnz,
+        const armpl_int_t *row_ptr, const armpl_int_t *col_indx, const DType *vals,
+        int32_t flags)
     {
         if constexpr (std::is_same_v<DType, float>)
         {
@@ -49,6 +50,32 @@ struct OpC<EMatType::ESPMatFormat::SPMatFormatCSR, DType>
         else if constexpr (std::is_same_v<DType, double>)
         {
             return armpl_spmat_create_csr_d(A, m, n, row_ptr, col_indx, vals, flags);
+        }
+        else
+        {
+            std::cerr << "Unsupported data type!" << std::endl;
+            return ARMPL_STATUS_INPUT_PARAMETER_ERROR;
+        }
+    }
+};
+
+template <typename DType>
+struct OpC<EMatType::ESPMatFormat::SPMatFormatCOO, DType>
+{
+    static armpl_status_t create(
+        armpl_spmat_t *A, armpl_int_t m, armpl_int_t n, armpl_int_t nnz,
+        const armpl_int_t *row_indx, const armpl_int_t *col_indx, const DType *vals,
+        armpl_int_t flags)
+    {
+        if constexpr (std::is_same_v<DType, float>)
+        {
+            return armpl_spmat_create_coo_s(
+                A, m, n, nnz, row_indx, col_indx, vals, flags);
+        }
+        else if constexpr (std::is_same_v<DType, double>)
+        {
+            return armpl_spmat_create_coo_d(
+                A, m, n, nnz, row_indx, col_indx, vals, flags);
         }
         else
         {
@@ -76,7 +103,7 @@ public:
     {
         armpl_status_t info;
         info = armplwarp::OpC<MType, DType>::create(
-            &armplMat, M, N, rowIdx, colIdx, vals, creation_flags);
+            &armplMat, M, N, NNZ, rowIdx, colIdx, vals, creation_flags);
         ARMPL_CEHCK(info);
 
         // General optimize the matrix

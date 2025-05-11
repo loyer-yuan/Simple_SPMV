@@ -18,6 +18,8 @@ find_path(ARMPL_INCLUDE_DIR
     DOC "ARMPL include directory"
 )
 
+find_package(OpenMP REQUIRED)
+
 # 3. 仅查找C/C++需要的库
 find_library(ARMPL_LIB
     NAMES "armpl_mp"  # "armpl"
@@ -30,6 +32,7 @@ set(ARMPL_INCLUDE_DIRS ${ARMPL_INCLUDE_DIR})
 set(ARMPL_LIBRARIES
     ${ARMPL_LIB}
     m  # math库
+    OpenMP::OpenMP_C
 )
 
 # 5. 验证必要组件
