@@ -4,12 +4,13 @@
 #include <string>
 #include <vector>
 
+#include "ArmPL.hpp"
 #include "Math.hpp"
 #include "Matrix.hpp"
 #include "Ops.h"
 #include "PerfUtils.hpp"
 
-#define DType float
+#define TestDType float
 
 // 定义固定宽度常量（根据实际需求调整）
 constexpr int LABEL_WIDTH = 20;  // 标签部分占用宽度
@@ -61,6 +62,28 @@ std::string format_value(T value, int precision = 6)
         FormatOutput(                                                                  \
             "All Size", SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0 / 1024.0, "GB");   \
         FormatOutput("All Bandwidth", mABandwidth / 1024.0 / 1024.0 / 1024.0, "GB/s"); \
+    }
+
+#define CheckResult(result, ref)                                               \
+    {                                                                          \
+        int count = 0;                                                         \
+        for (int i = 0; i < M; ++i)                                            \
+        {                                                                      \
+            if (xsparse::AllClose(result[i], ref[i]) == false && count++ < 10) \
+            {                                                                  \
+                std::cout << "Results mismatch at " << i << ": " << result[i]  \
+                          << " != " << ref[i] << std::endl;                    \
+            }                                                                  \
+        }                                                                      \
+        if (count == 0)                                                        \
+        {                                                                      \
+            std::cout << "Results match!" << std::endl;                        \
+        }                                                                      \
+        else                                                                   \
+        {                                                                      \
+            std::cout << "Results mismatched " << count << " times in total."  \
+                      << std::endl;                                            \
+        }                                                                      \
     }
 
 void PrintUsage()
@@ -227,7 +250,7 @@ int main(int argc, char *argv[])
     //  Prepare data
     //
 
-    xsparse::SPMatrixCOO<DType> spMatCOO;
+    xsparse::SPMatrixCOO<TestDType> spMatCOO;
     if (useFile)
     {
         if (!spMatCOO.CreateFromFile(inputFileName))
@@ -263,8 +286,9 @@ int main(int argc, char *argv[])
         spMatCOO.PrintMat();
     }
 
-    std::vector<DType> ivec(K);
-    xsparse::GenerateData<DType>(ivec.data(), K, 1.0f, true, (DType)-10, (DType)10);
+    std::vector<TestDType> ivec(K);
+    xsparse::GenerateData<TestDType>(
+        ivec.data(), K, 1.0f, true, (TestDType)-10, (TestDType)10);
     if (isPrint)
     {
         std::cout << "Input vector:" << std::endl;
@@ -275,7 +299,7 @@ int main(int argc, char *argv[])
         std::cout << "\n" << std::endl;
     }
 
-    std::vector<DType> ovec_ref(M);
+    std::vector<TestDType> ovec_ref(M);
     std::cout << "Running reference SpMV kernel..." << std::endl;
     std::cout << std::endl;
 
@@ -302,7 +326,7 @@ int main(int argc, char *argv[])
 
         std::cout << "Test CSR kernel." << std::endl;
 
-        xsparse::SPMatrixCSR<DType> spMatCSR;
+        xsparse::SPMatrixCSR<TestDType> spMatCSR;
         if (!spMatCSR.CreateFromCOO(spMatCOO))
         {
             std::cerr << "Failed to create SPMatrixCSR!" << std::endl;
@@ -316,13 +340,13 @@ int main(int argc, char *argv[])
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
 
-        std::vector<DType> ovec(M);
-        // xsparse::ComputeSPMVCSR<DType>(
+        std::vector<TestDType> ovec(M);
+        // xsparse::ComputeSPMVCSR<TestDType>(
         //     spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
         //     spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
         //     spMatCSR.n);
         PerfFunc(
-            xsparse::ComputeSPMVCSR<DType>(
+            xsparse::ComputeSPMVCSR<TestDType>(
                 spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
                 spMatCSR.n),
@@ -330,30 +354,37 @@ int main(int argc, char *argv[])
 
         if (useCSRRef)
         {
-            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(DType));
+            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(TestDType));
             std::cout << "\nUsing CSR result as reference!\n" << std::endl;
         }
 
         std::cout << "Checking results..." << std::endl;
-        int count = 0;
-        for (int i = 0; i < M; ++i)
-        {
-            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
-            {
-                std::cout << "Results mismatch at " << i << ": " << ovec[i]
-                          << " != " << ovec_ref[i] << std::endl;
-            }
-        }
-        if (count == 0)
-        {
-            std::cout << "Results match!" << std::endl;
-        }
-        else
-        {
-            std::cout << "Results mismatched " << count << " times in total."
-                      << std::endl;
-        }
+        CheckResult(ovec, ovec_ref);
 
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+
+        // Test CSR kernel with ArmPL
+        std::cout << "Test ArmPL CSR kernel.\n" << std::endl;
+        xsparse::ArmPL<xsparse::SPMatF::SPMatFormatCSR, TestDType> armplCSRKernel;
+        if (!armplCSRKernel.Initialize(
+                spMatCSR.m, spMatCSR.n, spMatCSR.mInfo.nnz, spMatCSR.data.get(),
+                spMatCSR.mInfo.rowPtr.get(), spMatCSR.mInfo.colIdx.get()))
+        {
+            std::cerr << "Failed to create ArmPL CSR matrix!" << std::endl;
+            return -1;
+        }
+        std::vector<TestDType> ovec_armpl(M);
+
+        std::cout << "Running SpMV kernel..." << std::endl;
+
+        // armplCSRKernel.Run(ivec.data(), ovec_armpl.data());
+        PerfFunc(armplCSRKernel.Run(ivec.data(), ovec_armpl.data()), spMatCSR);
+
+        std::cout << "Checking results..." << std::endl;
+        CheckResult(ovec_armpl, ovec_ref);
+
+        armplCSRKernel.Destroy();
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
@@ -364,40 +395,46 @@ int main(int argc, char *argv[])
     {
         std::cout << "Test COO kernel." << std::endl;
 
-        std::vector<DType> ovec(M);
+        std::vector<TestDType> ovec(M);
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVCOO<DType>(
+        // xsparse::ComputeSPMVCOO<TestDType>(
         //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
         //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
         //     spMatCOO.n, spMatCOO.mInfo.nnz);
         PerfFunc(
-            xsparse::ComputeSPMVCOO<DType>(
+            xsparse::ComputeSPMVCOO<TestDType>(
                 spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
                 spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
                 spMatCOO.n, spMatCOO.mInfo.nnz),
             spMatCOO);
 
         std::cout << "Checking results..." << std::endl;
-        int count = 0;
-        for (int i = 0; i < M; ++i)
-        {
-            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
-            {
-                std::cout << "Results mismatch at " << i << ": " << ovec[i]
-                          << " != " << ovec_ref[i] << std::endl;
-            }
-        }
-        if (count == 0)
-        {
-            std::cout << "Results match!" << std::endl;
-        }
-        else
-        {
-            std::cout << "Results mismatched " << count << " times in total."
-                      << std::endl;
-        }
+        CheckResult(ovec, ovec_ref);
 
+        std::cout << "End of test!" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+
+        // Test COO kernel with ArmPL
+        std::cout << "Test ArmPL COO kernel.\n" << std::endl;
+        xsparse::ArmPL<xsparse::SPMatF::SPMatFormatCOO, TestDType> armplCOOKernel;
+        if (!armplCOOKernel.Initialize(
+                spMatCOO.m, spMatCOO.n, spMatCOO.mInfo.nnz, spMatCOO.data.get(),
+                spMatCOO.mInfo.rowIdx.get(), spMatCOO.mInfo.colIdx.get()))
+        {
+            std::cerr << "Failed to create ArmPL COO matrix!" << std::endl;
+            return -1;
+        }
+        std::vector<TestDType> ovec_armpl(M);
+
+        std::cout << "Running SpMV kernel..." << std::endl;
+        // armplCOOKernel.Run(ivec.data(), ovec_armpl.data());
+        PerfFunc(armplCOOKernel.Run(ivec.data(), ovec_armpl.data()), spMatCOO);
+
+        std::cout << "Checking results..." << std::endl;
+        CheckResult(ovec_armpl, ovec_ref);
+
+        armplCOOKernel.Destroy();
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
@@ -408,9 +445,9 @@ int main(int argc, char *argv[])
     {
         std::cout << "Test ELL kernel." << std::endl;
 
-        std::vector<DType> ovec(M);
+        std::vector<TestDType> ovec(M);
 
-        xsparse::SPMatrixELL<DType> spMatELL;
+        xsparse::SPMatrixELL<TestDType> spMatELL;
         if (!spMatELL.CreateFromCOO(spMatCOO))
         {
             std::cerr << "Failed to create SPMatrixELL!" << std::endl;
@@ -422,34 +459,17 @@ int main(int argc, char *argv[])
             spMatELL.PrintMat();
         }
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVELL<DType>(
+        // xsparse::ComputeSPMVELL<TestDType>(
         //     spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
         //     spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
         PerfFunc(
-            xsparse::ComputeSPMVELL<DType>(
+            xsparse::ComputeSPMVELL<TestDType>(
                 spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
                 ovec.data(), spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol),
             spMatELL);
 
         std::cout << "Checking results..." << std::endl;
-        int count = 0;
-        for (int i = 0; i < M; ++i)
-        {
-            if (xsparse::AllClose(ovec[i], ovec_ref[i]) == false && count++ < 10)
-            {
-                std::cout << "Results mismatch at " << i << ": " << ovec[i]
-                          << " != " << ovec_ref[i] << std::endl;
-            }
-        }
-        if (count == 0)
-        {
-            std::cout << "Results match!" << std::endl;
-        }
-        else
-        {
-            std::cout << "Results mismatched " << count << " times in total."
-                      << std::endl;
-        }
+        CheckResult(ovec, ovec_ref);
 
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;

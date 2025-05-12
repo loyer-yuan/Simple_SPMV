@@ -22,10 +22,14 @@ set_source_files_properties(
 add_executable(cpu_test_all
     test_all.cpp
 )
+target_include_directories(cpu_test_all PRIVATE
+    ${ARMPL_INCLUDE_DIRS}
+)
 target_link_libraries(cpu_test_all PRIVATE
     cpu_spmv
     Threads::Threads
     mmio
+    ${ARMPL_LIBRARIES}
 )
 set_target_properties(cpu_test_all PROPERTIES
     VERSION ${PROJECT_VERSION}
