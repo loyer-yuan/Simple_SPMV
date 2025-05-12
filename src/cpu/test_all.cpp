@@ -354,7 +354,10 @@ int main(int argc, char *argv[])
 
         if (useCSRRef)
         {
-            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(TestDType));
+            xsparse::ComputeSPMVCSR_Ref<TestDType>(
+                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_ref.data(), spMatCSR.m,
+                spMatCSR.n);
             std::cout << "\nUsing CSR result as reference!\n" << std::endl;
         }
 
