@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ArmPL.hpp"
+#include "Device.h"
 #include "Math.hpp"
 #include "Matrix.hpp"
 #include "Ops.h"
@@ -67,7 +68,7 @@ std::string format_value(T value, int precision = 6)
 #define CheckResult(result, ref)                                               \
     {                                                                          \
         int count = 0;                                                         \
-        for (int i = 0; i < M; ++i)                                            \
+        for (int i = 0; i < cmdOpt.M; ++i)                                     \
         {                                                                      \
             if (xsparse::AllClose(result[i], ref[i]) == false && count++ < 10) \
             {                                                                  \
@@ -86,13 +87,25 @@ std::string format_value(T value, int precision = 6)
         }                                                                      \
     }
 
+struct CmdOptions
+{
+    uint M = 0;
+    uint K = 0;
+    double PROB = 0.0;
+    bool isPrint = false;
+    bool useFile = false;
+    bool useCSRRef = false;
+    std::string inputFileName;
+    uint32_t numCores = 1;
+};
+
 void PrintUsage()
 {
     string usageMsg =
         "\n"
         "======================================================================\n"
         "   Usage   : test_all  [-m <int>] [-k <int>] [-prob <float>]\n"
-        "                       [-p] [-f <string>] [-csrRef]\n"
+        "                       [-p] [-f <string>] [-csrRef] [-t <int>]\n"
 
         "           -m          Number of rows in the matrix (default: 5)\n"
 
@@ -105,7 +118,9 @@ void PrintUsage()
         "           -f          Input file name. If set, M, K, prob would be\n"
         "                       overwritten \n"
 
-        "           -csrRef   Use COO result as reference (default: false)\n"
+        "           -csrRef     Use COO result as reference (default: false)\n"
+
+        "           -t          Number of threads (default: 1)\n"
 
         "           -h          Print this help message\n"
         "======================================================================\n";
@@ -113,9 +128,7 @@ void PrintUsage()
     std::cout << usageMsg;
 }
 
-bool ParseArgs(
-    int argc, char *argv[], uint &M, uint &K, double &PROB, bool &isPrint,
-    bool &useFile, std::string &inputFileName, bool &useCSRRef)
+bool ParseArgs(int argc, char *argv[], CmdOptions &cmdOpt)
 {
     if (argc < 2)
     {
@@ -133,8 +146,8 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -m option." << std::endl;
                 return false;
             }
-            M = std::stoul(argv[++i]);
-            if (M <= 0)
+            cmdOpt.M = std::stoul(argv[++i]);
+            if (cmdOpt.M <= 0)
             {
                 std::cerr << "Error: Invalid value for -m option." << std::endl;
                 return false;
@@ -147,8 +160,8 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -k option." << std::endl;
                 return false;
             }
-            K = std::stoul(argv[++i]);
-            if (K <= 0)
+            cmdOpt.K = std::stoul(argv[++i]);
+            if (cmdOpt.K <= 0)
             {
                 std::cerr << "Error: Invalid value for -k option." << std::endl;
                 return false;
@@ -161,8 +174,8 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -prob option." << std::endl;
                 return false;
             }
-            PROB = std::stod(argv[++i]);
-            if (PROB < 0.0 || PROB > 1.0)
+            cmdOpt.PROB = std::stod(argv[++i]);
+            if (cmdOpt.PROB < 0.0 || cmdOpt.PROB > 1.0)
             {
                 std::cerr << "Error: Invalid value for -prob option." << std::endl;
                 return false;
@@ -170,7 +183,7 @@ bool ParseArgs(
         }
         else if (arg == "-p")
         {
-            isPrint = true;
+            cmdOpt.isPrint = true;
         }
         else if (arg == "-f")
         {
@@ -179,12 +192,21 @@ bool ParseArgs(
                 std::cerr << "Error: Missing value for -f option." << std::endl;
                 return false;
             }
-            useFile = true;
-            inputFileName = argv[++i];
+            cmdOpt.useFile = true;
+            cmdOpt.inputFileName = argv[++i];
         }
         else if (arg == "-csrRef")
         {
-            useCSRRef = true;
+            cmdOpt.useCSRRef = true;
+        }
+        else if (arg == "-t")
+        {
+            cmdOpt.numCores = std::stoul(argv[++i]);
+            if (cmdOpt.numCores <= 0)
+            {
+                std::cerr << "Error: Invalid value for -t option." << std::endl;
+                return false;
+            }
         }
         else
         {
@@ -222,27 +244,21 @@ int main(int argc, char *argv[])
     //
     // Parameters
     //
-    uint M = 0;
-    uint K = 0;
-    double PROB = 0.0;
-    bool isPrint = false;
-    bool useFile = false;
-    bool useCSRRef = false;
-    std::string inputFileName;
+    CmdOptions cmdOpt;
 
-    if (!ParseArgs(argc, argv, M, K, PROB, isPrint, useFile, inputFileName, useCSRRef))
+    if (!ParseArgs(argc, argv, cmdOpt))
     {
         return -1;
     }
 
-    if (useFile)
+    if (cmdOpt.useFile)
     {
-        std::cout << "Using input file: " << inputFileName << std::endl;
+        std::cout << "Using input file: " << cmdOpt.inputFileName << std::endl;
     }
     else
     {
-        std::cout << "M = " << M << ", K = " << K << std::endl;
-        std::cout << "PROB = " << PROB << std::endl;
+        std::cout << "M = " << cmdOpt.M << ", K = " << cmdOpt.K << std::endl;
+        std::cout << "PROB = " << cmdOpt.PROB << std::endl;
     }
     std::cout << "----------------------------------------" << std::endl;
 
@@ -251,45 +267,46 @@ int main(int argc, char *argv[])
     //
 
     xsparse::SPMatrixCOO<TestDType> spMatCOO;
-    if (useFile)
+    if (cmdOpt.useFile)
     {
-        if (!spMatCOO.CreateFromFile(inputFileName))
+        if (!spMatCOO.CreateFromFile(cmdOpt.inputFileName))
         {
             std::cerr << "Failed to create SPMatrixCOO from file!" << std::endl;
             return -1;
         }
-        M = spMatCOO.GetRows();
-        K = spMatCOO.GetCols();
-        PROB = static_cast<double>(spMatCOO.mInfo.nnz) / static_cast<double>(M * K);
+        cmdOpt.M = spMatCOO.GetRows();
+        cmdOpt.K = spMatCOO.GetCols();
+        cmdOpt.PROB = static_cast<double>(spMatCOO.mInfo.nnz) /
+                      static_cast<double>(cmdOpt.M * cmdOpt.K);
 
         std::cout << "----------------------------------------" << std::endl;
-        std::cout << "M = " << M << ", K = " << K << ", NNZ = " << spMatCOO.mInfo.nnz
-                  << std::endl;
-        std::cout << "PROB = " << PROB << std::endl;
+        std::cout << "M = " << cmdOpt.M << ", K = " << cmdOpt.K
+                  << ", NNZ = " << spMatCOO.mInfo.nnz << std::endl;
+        std::cout << "PROB = " << cmdOpt.PROB << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
     else
     {
-        if (!spMatCOO.CreateRamdomly(M, K, PROB, true))
+        if (!spMatCOO.CreateRamdomly(cmdOpt.M, cmdOpt.K, cmdOpt.PROB, true))
         {
             std::cerr << "Failed to create SPMatrixCOO!" << std::endl;
             return -1;
         }
     }
-    if (isPrint)
+    if (cmdOpt.isPrint)
     {
         spMatCOO.PrintCOO();
     }
-    if (0 && isPrint)
+    if (0 && cmdOpt.isPrint)
     {
         std::cout << "Input Matrix :" << std::endl;
         spMatCOO.PrintMat();
     }
 
-    std::vector<TestDType> ivec(K);
+    std::vector<TestDType> ivec(cmdOpt.K);
     xsparse::GenerateData<TestDType>(
-        ivec.data(), K, 1.0f, true, (TestDType)-10, (TestDType)10);
-    if (isPrint)
+        ivec.data(), cmdOpt.K, 1.0f, true, (TestDType)-10, (TestDType)10);
+    if (cmdOpt.isPrint)
     {
         std::cout << "Input vector:" << std::endl;
         for (auto i : ivec)
@@ -299,15 +316,15 @@ int main(int argc, char *argv[])
         std::cout << "\n" << std::endl;
     }
 
-    std::vector<TestDType> ovec_ref(M);
+    std::vector<TestDType> ovec_ref(cmdOpt.M);
     std::cout << "Running reference SpMV kernel..." << std::endl;
     std::cout << std::endl;
 
-    if (!useCSRRef)
+    if (!cmdOpt.useCSRRef)
     {
         MVRef(spMatCOO, ivec, ovec_ref);
 
-        if (isPrint)
+        if (cmdOpt.isPrint)
         {
             std::cout << "Reference output vector:" << std::endl;
             for (auto i : ovec_ref)
@@ -318,6 +335,8 @@ int main(int argc, char *argv[])
         }
         std::cout << "----------------------------------------" << std::endl;
     }
+
+    const xsparse::HWParams hw{cmdOpt.numCores};
 
     //
     // Test CSR kernel
@@ -332,7 +351,7 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to create SPMatrixCSR!" << std::endl;
             return -1;
         }
-        if (0 && isPrint)
+        if (0 && cmdOpt.isPrint)
         {
             spMatCSR.PrintCSR();
             spMatCSR.PrintMat();
@@ -340,21 +359,20 @@ int main(int argc, char *argv[])
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
 
-        std::vector<TestDType> ovec(M);
-        // xsparse::ComputeSPMVCSR<TestDType>(
-        //     spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
-        //     spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
-        //     spMatCSR.n);
+        std::vector<TestDType> ovec(cmdOpt.M);
         PerfFunc(
             xsparse::ComputeSPMVCSR<TestDType>(
-                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                hw, spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
                 spMatCSR.n),
             spMatCSR);
 
-        if (useCSRRef)
+        if (cmdOpt.useCSRRef)
         {
-            std::memcpy(ovec_ref.data(), ovec.data(), M * sizeof(TestDType));
+            xsparse::ComputeSPMVCSR_Ref<TestDType>(
+                hw, spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_ref.data(), spMatCSR.m,
+                spMatCSR.n);
             std::cout << "\nUsing CSR result as reference!\n" << std::endl;
         }
 
@@ -374,7 +392,7 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to create ArmPL CSR matrix!" << std::endl;
             return -1;
         }
-        std::vector<TestDType> ovec_armpl(M);
+        std::vector<TestDType> ovec_armpl(cmdOpt.M);
 
         std::cout << "Running SpMV kernel..." << std::endl;
 
@@ -395,16 +413,12 @@ int main(int argc, char *argv[])
     {
         std::cout << "Test COO kernel." << std::endl;
 
-        std::vector<TestDType> ovec(M);
+        std::vector<TestDType> ovec(cmdOpt.M);
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVCOO<TestDType>(
-        //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
-        //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
-        //     spMatCOO.n, spMatCOO.mInfo.nnz);
         PerfFunc(
             xsparse::ComputeSPMVCOO<TestDType>(
-                spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+                hw, spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
                 spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
                 spMatCOO.n, spMatCOO.mInfo.nnz),
             spMatCOO);
@@ -425,10 +439,9 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to create ArmPL COO matrix!" << std::endl;
             return -1;
         }
-        std::vector<TestDType> ovec_armpl(M);
+        std::vector<TestDType> ovec_armpl(cmdOpt.M);
 
         std::cout << "Running SpMV kernel..." << std::endl;
-        // armplCOOKernel.Run(ivec.data(), ovec_armpl.data());
         PerfFunc(armplCOOKernel.Run(ivec.data(), ovec_armpl.data()), spMatCOO);
 
         std::cout << "Checking results..." << std::endl;
@@ -445,7 +458,7 @@ int main(int argc, char *argv[])
     {
         std::cout << "Test ELL kernel." << std::endl;
 
-        std::vector<TestDType> ovec(M);
+        std::vector<TestDType> ovec(cmdOpt.M);
 
         xsparse::SPMatrixELL<TestDType> spMatELL;
         if (!spMatELL.CreateFromCOO(spMatCOO))
@@ -453,18 +466,15 @@ int main(int argc, char *argv[])
             std::cerr << "Failed to create SPMatrixELL!" << std::endl;
             return -1;
         }
-        if (0 && isPrint)
+        if (0 && cmdOpt.isPrint)
         {
             spMatELL.PrintELL();
             spMatELL.PrintMat();
         }
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVELL<TestDType>(
-        //     spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
-        //     spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
         PerfFunc(
             xsparse::ComputeSPMVELL<TestDType>(
-                spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
+                hw, spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
                 ovec.data(), spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol),
             spMatELL);
 

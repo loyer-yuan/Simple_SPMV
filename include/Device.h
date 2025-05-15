@@ -3,13 +3,17 @@
 
 #include <cstdint>
 
-#define NumCores 8u
-
 namespace xsparse {
+
+struct HWParams
+{
+    uint numCores = 1u;
+};
 
 struct RTParams
 {
     uint32_t tid;
+    HWParams hw;
 };
 
 }  // namespace xsparse
