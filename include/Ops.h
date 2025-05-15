@@ -1,6 +1,7 @@
 #ifndef XSPARSE_OPS_H
 #define XSPARSE_OPS_H
 
+#include "Device.h"
 #include "Matrix.hpp"
 
 namespace xsparse {
@@ -20,7 +21,8 @@ namespace xsparse {
  */
 template <typename DType>
 void ComputeSPMVCOO(
-    const DType *__restrict__ cooData, const IdxType *__restrict__ cooRowIndices,
+    const HWParams hw, const DType *__restrict__ cooData,
+    const IdxType *__restrict__ cooRowIndices,
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz);
 
@@ -38,15 +40,17 @@ void ComputeSPMVCOO(
  */
 template <typename DType>
 void ComputeSPMVCSR(
-    const DType *__restrict__ csrData, const IdxType *__restrict__ csrRowIdices,
-    const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
-    DType *__restrict__ out, const IdxType m, const IdxType k);
+    const HWParams hw, const DType *__restrict__ csrData,
+    const IdxType *__restrict__ csrRowIdices, const IdxType *__restrict__ csrColIdices,
+    const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
+    const IdxType k);
 
 template <typename DType>
 void ComputeSPMVCSR_Ref(
-    const DType *__restrict__ csrData, const IdxType *__restrict__ csrRowIdices,
-    const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
-    DType *__restrict__ out, const IdxType m, const IdxType k);
+    const HWParams hw, const DType *__restrict__ csrData,
+    const IdxType *__restrict__ csrRowIdices, const IdxType *__restrict__ csrColIdices,
+    const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
+    const IdxType k);
 
 /**
  * @brief Compute the sparse matrix-vector multiplication (SpMV) using ELL format
@@ -62,9 +66,10 @@ void ComputeSPMVCSR_Ref(
  */
 template <typename DType>
 void ComputeSPMVELL(
-    const DType *__restrict__ dataMat, const IdxType *__restrict__ idxMat,
-    const DType *__restrict__ iVec, DType *__restrict__ oVer, const IdxType m,
-    const IdxType k, const IdxType colIdxMat);
+    const HWParams hw, const DType *__restrict__ dataMat,
+    const IdxType *__restrict__ idxMat, const DType *__restrict__ iVec,
+    DType *__restrict__ oVer, const IdxType m, const IdxType k,
+    const IdxType colIdxMat);
 
 }  // namespace xsparse
 

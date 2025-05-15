@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "ArmPL.hpp"
+#include "Device.h"
 #include "Math.hpp"
 #include "Matrix.hpp"
 #include "Ops.h"
@@ -335,6 +336,8 @@ int main(int argc, char *argv[])
         std::cout << "----------------------------------------" << std::endl;
     }
 
+    const xsparse::HWParams hw{cmdOpt.numCores};
+
     //
     // Test CSR kernel
     //
@@ -357,13 +360,9 @@ int main(int argc, char *argv[])
         std::cout << "Running CPU SpMV kernel..." << std::endl;
 
         std::vector<TestDType> ovec(cmdOpt.M);
-        // xsparse::ComputeSPMVCSR<TestDType>(
-        //     spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
-        //     spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
-        //     spMatCSR.n);
         PerfFunc(
             xsparse::ComputeSPMVCSR<TestDType>(
-                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                hw, spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCSR.m,
                 spMatCSR.n),
             spMatCSR);
@@ -371,7 +370,7 @@ int main(int argc, char *argv[])
         if (cmdOpt.useCSRRef)
         {
             xsparse::ComputeSPMVCSR_Ref<TestDType>(
-                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                hw, spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_ref.data(), spMatCSR.m,
                 spMatCSR.n);
             std::cout << "\nUsing CSR result as reference!\n" << std::endl;
@@ -407,7 +406,7 @@ int main(int argc, char *argv[])
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
-#ifdef TESTALL
+
     //
     // Test COO kernel
     //
@@ -417,13 +416,9 @@ int main(int argc, char *argv[])
         std::vector<TestDType> ovec(cmdOpt.M);
 
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVCOO<TestDType>(
-        //     spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
-        //     spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
-        //     spMatCOO.n, spMatCOO.mInfo.nnz);
         PerfFunc(
             xsparse::ComputeSPMVCOO<TestDType>(
-                spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
+                hw, spMatCOO.data.get(), spMatCOO.mInfo.rowIdx.get(),
                 spMatCOO.mInfo.colIdx.get(), ivec.data(), ovec.data(), spMatCOO.m,
                 spMatCOO.n, spMatCOO.mInfo.nnz),
             spMatCOO);
@@ -447,7 +442,6 @@ int main(int argc, char *argv[])
         std::vector<TestDType> ovec_armpl(cmdOpt.M);
 
         std::cout << "Running SpMV kernel..." << std::endl;
-        // armplCOOKernel.Run(ivec.data(), ovec_armpl.data());
         PerfFunc(armplCOOKernel.Run(ivec.data(), ovec_armpl.data()), spMatCOO);
 
         std::cout << "Checking results..." << std::endl;
@@ -478,12 +472,9 @@ int main(int argc, char *argv[])
             spMatELL.PrintMat();
         }
         std::cout << "Running CPU SpMV kernel..." << std::endl;
-        // xsparse::ComputeSPMVELL<TestDType>(
-        //     spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(), ovec.data(),
-        //     spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol);
         PerfFunc(
             xsparse::ComputeSPMVELL<TestDType>(
-                spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
+                hw, spMatELL.data.get(), spMatELL.mInfo.idxMat.get(), ivec.data(),
                 ovec.data(), spMatELL.m, spMatELL.n, spMatELL.mInfo.maxCol),
             spMatELL);
 
@@ -493,7 +484,6 @@ int main(int argc, char *argv[])
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
-#endif
 
     return 0;
 }
