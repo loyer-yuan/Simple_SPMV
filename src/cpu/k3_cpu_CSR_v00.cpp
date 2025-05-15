@@ -149,34 +149,37 @@ template void ComputeSPMVCSR_Ref<int>(
 
 template <typename DType>
 void ComputeSPMVCSR_Ref(
-    const DType *__restrict__ csrData, const IdxType *__restrict__ csrRowIdices,
-    const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
-    DType *__restrict__ out, const IdxType m, const IdxType k)
+    const HWParams hw, const DType *__restrict__ csrData,
+    const IdxType *__restrict__ csrRowIdices, const IdxType *__restrict__ csrColIdices,
+    const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
+    const IdxType k)
 {
-    RTParams rt[NumCores];
-    std::thread threads[NumCores];
-    for (IdxType i = 0; i < NumCores; i++)
+    const uint ThreadNum = hw.numCores;
+    std::unique_ptr<std::thread[]> threads(new std::thread[ThreadNum]);
+    for (IdxType i = 0; i < ThreadNum; i++)
     {
-        rt[i].tid = i;
+        RTParams rt{i, hw};
         threads[i] = std::thread(
-            &CSRKernel<DType, NumCores, 0>::Run, std::ref(rt[i]), csrData, csrRowIdices,
-            csrColIdices, vec, out, m, k);
+            &CSRKernel<DType, 0>::Run, rt, csrData, csrRowIdices, csrColIdices, vec,
+            out, m, k);
     }
-    for (IdxType i = 0; i < NumCores; i++)
+    for (IdxType i = 0; i < ThreadNum; i++)
     {
         threads[i].join();
     }
 }
 // Instantiation
 template void ComputeSPMVCSR_Ref<float>(
-    const float *__restrict__, const IdxType *__restrict__, const IdxType *__restrict__,
-    const float *__restrict__, float *__restrict__, const IdxType, const IdxType);
+    const HWParams, const float *__restrict__, const IdxType *__restrict__,
+    const IdxType *__restrict__, const float *__restrict__, float *__restrict__,
+    const IdxType, const IdxType);
 template void ComputeSPMVCSR_Ref<double>(
-    const double *__restrict__, const IdxType *__restrict__,
+    const HWParams, const double *__restrict__, const IdxType *__restrict__,
     const IdxType *__restrict__, const double *__restrict__, double *__restrict__,
     const IdxType, const IdxType);
 template void ComputeSPMVCSR_Ref<int>(
-    const int *__restrict__, const IdxType *__restrict__, const IdxType *__restrict__,
-    const int *__restrict__, int *__restrict__, const IdxType, const IdxType);
+    const HWParams, const int *__restrict__, const IdxType *__restrict__,
+    const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
+    const IdxType, const IdxType);
 
 }  // namespace xsparse
