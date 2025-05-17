@@ -16,7 +16,7 @@ struct ELLKernel<DType, 0>
         DType *__restrict__ oVer, const IdxType m, const IdxType k,
         const IdxType colIdxMat)
     {
-        const uint ThreadNum = rt.hw.numCores;
+        const int ThreadNum = rt.hw.numCores;
 #pragma unroll
         for (IdxType i = rt.tid; i < m; i += ThreadNum)
         {
@@ -43,7 +43,7 @@ void ELLCompute0(
     const IdxType *__restrict__ idxMat, const DType *__restrict__ iVec,
     DType *__restrict__ oVer, const IdxType m, const IdxType k, const IdxType colIdxMat)
 {
-    const uint ThreadNum = hw.numCores;
+    const int ThreadNum = hw.numCores;
     std::unique_ptr<std::thread[]> threads(new std::thread[ThreadNum]);
     for (IdxType i = 0; i < ThreadNum; i++)
     {

@@ -7,12 +7,12 @@ namespace xsparse {
 
 struct HWParams
 {
-    uint numCores = 1u;
+    int numCores = 1u;
 };
 
 struct RTParams
 {
-    uint32_t tid;
+    int tid;
     HWParams hw;
 };
 

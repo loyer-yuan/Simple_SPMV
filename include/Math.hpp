@@ -29,7 +29,7 @@ static std::atomic<unsigned int> globalSeedCounter(2025);
  * @param nnz Number of non-zero elements
  * @param isRuntimeRandom If true, random_device is used to generate random values
  */
-template <typename T = uint32_t>
+template <typename T = int>
 void GenerateIndices2D(
     T *mIndices, T *nIndices, const T mSize, const T nSize, const T nnz,
     bool isRuntimeRandom = false)
@@ -86,7 +86,7 @@ void GenerateIndices2D(
  * @param nnz Number of non-zero elements
  * @param isRuntimeRandom If true, random_device is used to generate random values
  */
-template <typename T = uint32_t>
+template <typename T = int>
 void GenerateIndices1D(
     T *indices, const T dimSize, const T nnz, bool isRuntimeRandom = false)
 {
@@ -139,11 +139,11 @@ void GenerateIndices1D(
  * @param prob Probability of non-zero values
  */
 template <typename T = float>
-uint32_t GenerateData(
+int GenerateData(
     T *data, const int n, const float prob = 0.2, const bool isRuntimeRandom = false,
     const T minV = 0.0, const T maxV = 1.0)
 {
-    uint32_t count = 0;
+    int count = 0;
     if (isRuntimeRandom) [[likely]]
     {
         std::random_device rd;

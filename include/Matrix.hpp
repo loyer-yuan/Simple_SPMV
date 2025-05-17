@@ -14,8 +14,7 @@
 #include "Math.hpp"
 #include "mmio/mmio.h"
 
-// #define IdxType       uint32_t
-#define IdxType       int  // For armpl
+#define IdxType       int
 #define ELLZeroIdxVal 2294967295U
 
 using namespace std;
