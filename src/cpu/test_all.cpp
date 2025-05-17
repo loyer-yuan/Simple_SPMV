@@ -89,14 +89,14 @@ std::string format_value(T value, int precision = 6)
 
 struct CmdOptions
 {
-    uint M = 0;
-    uint K = 0;
+    int M = 0;
+    int K = 0;
     double PROB = 0.0;
     bool isPrint = false;
     bool useFile = false;
     bool useCSRRef = false;
     std::string inputFileName;
-    uint32_t numCores = 1;
+    int numCores = 1;
 };
 
 void PrintUsage()
@@ -320,6 +320,8 @@ int main(int argc, char *argv[])
     std::cout << "Running reference SpMV kernel..." << std::endl;
     std::cout << std::endl;
 
+    const xsparse::HWParams hw{cmdOpt.numCores};
+
     if (!cmdOpt.useCSRRef)
     {
         MVRef(spMatCOO, ivec, ovec_ref);
@@ -333,10 +335,22 @@ int main(int argc, char *argv[])
             }
             std::cout << "\n" << std::endl;
         }
-        std::cout << "----------------------------------------" << std::endl;
     }
-
-    const xsparse::HWParams hw{cmdOpt.numCores};
+    else
+    {
+        xsparse::SPMatrixCSR<TestDType> spMatCSRRef;
+        if (!spMatCSRRef.CreateFromCOO(spMatCOO))
+        {
+            std::cerr << "Failed to create SPMatrixCSR!" << std::endl;
+            return -1;
+        }
+        xsparse::ComputeSPMVCSR_Ref<TestDType>(
+            hw, spMatCSRRef.data.get(), spMatCSRRef.mInfo.rowPtr.get(),
+            spMatCSRRef.mInfo.colIdx.get(), ivec.data(), ovec_ref.data(), spMatCSRRef.m,
+            spMatCSRRef.n);
+        std::cout << "Using CSR result as reference!\n" << std::endl;
+    }
+    std::cout << "----------------------------------------" << std::endl;
 
     //
     // Test CSR kernel
@@ -367,15 +381,6 @@ int main(int argc, char *argv[])
                 spMatCSR.n),
             spMatCSR);
 
-        if (cmdOpt.useCSRRef)
-        {
-            xsparse::ComputeSPMVCSR_Ref<TestDType>(
-                hw, spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
-                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_ref.data(), spMatCSR.m,
-                spMatCSR.n);
-            std::cout << "\nUsing CSR result as reference!\n" << std::endl;
-        }
-
         std::cout << "Checking results..." << std::endl;
         CheckResult(ovec, ovec_ref);
 
@@ -395,8 +400,6 @@ int main(int argc, char *argv[])
         std::vector<TestDType> ovec_armpl(cmdOpt.M);
 
         std::cout << "Running SpMV kernel..." << std::endl;
-
-        // armplCSRKernel.Run(ivec.data(), ovec_armpl.data());
         PerfFunc(armplCSRKernel.Run(ivec.data(), ovec_armpl.data()), spMatCSR);
 
         std::cout << "Checking results..." << std::endl;

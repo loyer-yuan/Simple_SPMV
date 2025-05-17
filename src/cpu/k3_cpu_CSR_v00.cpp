@@ -21,7 +21,7 @@ struct CSRKernel<DType, 0>
         const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
         DType *__restrict__ out, const IdxType m, const IdxType k)
     {
-        uint ThreadNum = rt.hw.numCores;
+        int ThreadNum = rt.hw.numCores;
 #pragma unroll
         for (IdxType i = rt.tid; i < m; i += ThreadNum)
         {
@@ -46,7 +46,7 @@ struct CSRKernel<DType, 1>
         const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
         DType *__restrict__ out, const IdxType m, const IdxType k)
     {
-        uint ThreadNum = rt.hw.numCores;
+        int ThreadNum = rt.hw.numCores;
         const IdxType rowsPerT = m / ThreadNum;
         const IdxType rowS = rt.tid * rowsPerT;
         const IdxType rowE = rt.tid == ThreadNum - 1 ? m : rowS + rowsPerT;
@@ -74,7 +74,7 @@ void CSRCompute0(
     const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
     const IdxType k)
 {
-    const uint ThreadNum = hw.numCores;
+    const int ThreadNum = hw.numCores;
     std::unique_ptr<std::thread[]> threads(new std::thread[ThreadNum]);
     for (IdxType i = 0; i < ThreadNum; i++)
     {
@@ -119,7 +119,7 @@ void ComputeSPMVCSR_Ref(
     const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
     const IdxType k)
 {
-    const uint ThreadNum = hw.numCores;
+    const int ThreadNum = hw.numCores;
     std::unique_ptr<std::thread[]> threads(new std::thread[ThreadNum]);
     for (IdxType i = 0; i < ThreadNum; i++)
     {
@@ -146,5 +146,4 @@ template void ComputeSPMVCSR_Ref<int>(
     const HWParams, const int *__restrict__, const IdxType *__restrict__,
     const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
     const IdxType, const IdxType);
-
 }  // namespace xsparse

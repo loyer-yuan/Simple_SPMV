@@ -52,6 +52,13 @@ void ComputeSPMVCSR_Ref(
     const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
     const IdxType k);
 
+template <typename DType>
+void ComputeSPMVCSR_Ref(
+    const HWParams hw, const DType *__restrict__ csrData,
+    const IdxType *__restrict__ csrRowIdices, const IdxType *__restrict__ csrColIdices,
+    const DType *__restrict__ vec, DType *__restrict__ out, const IdxType m,
+    const IdxType k);
+
 /**
  * @brief Compute the sparse matrix-vector multiplication (SpMV) using ELL format
  *

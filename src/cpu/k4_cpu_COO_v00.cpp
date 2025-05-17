@@ -19,7 +19,7 @@ struct COOKernel<DType, 0>
         std::atomic<DType> *__restrict__ out, const IdxType m, const IdxType k,
         const IdxType nnz)
     {
-        uint ThreadNum = rt.hw.numCores;
+        int ThreadNum = rt.hw.numCores;
 #pragma unroll
         for (IdxType i = rt.tid; i < nnz; i += ThreadNum)
         {
@@ -41,7 +41,7 @@ void COOCompute0(
     const IdxType *__restrict__ cooColIndices, const DType *__restrict__ vec,
     DType *__restrict__ out, const IdxType m, const IdxType k, const IdxType nnz)
 {
-    const uint ThreadNum = hw.numCores;
+    const int ThreadNum = hw.numCores;
     std::vector<DType> atomicOutBuffer(m, 0);
     auto *atomicOut = reinterpret_cast<std::atomic<DType> *>(atomicOutBuffer.data());
 
