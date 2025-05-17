@@ -13,6 +13,10 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Requires C++20.
 set(CMAKE_CXX_STANDARD 20)
+add_compile_options(
+    $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:GNU,Clang,AppleClang>>:-O3>
+    $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:MSVC>>:/O2>
+)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 find_package(ARMPL REQUIRED)

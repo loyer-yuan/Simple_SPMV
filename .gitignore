@@ -8,6 +8,7 @@ build*/
 test*.sh
 *.ncu-rep
 *.nsys-rep
+*.csv
 
 # Compiled static libraries
 *.lib

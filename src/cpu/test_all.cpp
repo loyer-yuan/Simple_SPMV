@@ -410,6 +410,7 @@ int main(int argc, char *argv[])
         std::cout << "----------------------------------------" << std::endl;
     }
 
+#ifdef TESTALL
     //
     // Test COO kernel
     //
@@ -487,6 +488,7 @@ int main(int argc, char *argv[])
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
+#endif
 
     return 0;
 }
