@@ -17,6 +17,11 @@ def main():
                         default=False,
                         help="是否跳过已有结果(默认:False)")
 
+    parser.add_argument("-f", "--force-run",
+                        action="store_true",
+                        default=False,
+                        help="直接运行所有参数，结果输出到屏幕")
+
     parser.add_argument("-m", "--spmatrix-dir",
                         type=str,
                         default="../spmat",
@@ -40,6 +45,7 @@ def main():
     args = parser.parse_args()
 
     # 用户配置参数
+    force_run = args.force_run          # 是否强制运行所有参数
     skip_existing = args.skip_existing  # 是否跳过已有结果
     matrix_dir = args.spmatrix_dir      # 矩阵文件目录
     thread_values = args.threads        # 线程参数值
@@ -86,7 +92,7 @@ def main():
 
     # 读取已有结果
     existing_df = pd.DataFrame()
-    if os.path.exists(output_csv):
+    if os.path.exists(output_csv) and not force_run:
         try:
             existing_df = pd.read_csv(output_csv)
         except Exception as e:
@@ -94,7 +100,7 @@ def main():
             existing_df = pd.DataFrame()
 
     # 参数过滤逻辑
-    if skip_existing and not existing_df.empty:
+    if skip_existing and not existing_df.empty and not force_run:
         # 获取已有结果标识符
         existing_keys = set(
             existing_df[['Threads', 'Input File']]
@@ -201,7 +207,7 @@ def main():
                                     "无法转换值: {match.group(1)}")
 
     # 结果合并逻辑
-    if not skip_existing and not existing_df.empty:
+    if not skip_existing and not existing_df.empty and not force_run:
         # 创建保留掩码:保留不在当前参数中的旧记录
         preserve_mask = ~existing_df.apply(
             lambda row: (
@@ -222,17 +228,22 @@ def main():
         'All Bandwidth', 'All Size', 'Total GFlops'
     ]
 
-    try:
-        final_df[column_order].drop_duplicates(
-            subset=['Threads', 'Input File', 'Test Name'],
-            keep='last'
-        ).sort_values(by=['Input File', 'Test Name', 'Threads']).to_csv(output_csv, index=False)
-        print(f"结果已保存至 {output_csv}")
-        # 打印表格预览
-        print("\nPreview of results:")
-        print(final_df.head())
-    except Exception as e:
-        print(f"保存失败: {e}")
+    if force_run:
+        # 如果强制运行，直接输出到屏幕
+        print("\nExperiment results:")
+        print(final_df[column_order].sort_values(by=['Input File', 'Test Name', 'Threads']).to_string(index=False))
+    else:
+        try:
+            final_df[column_order].drop_duplicates(
+                subset=['Threads', 'Input File', 'Test Name'],
+                keep='last'
+            ).sort_values(by=['Input File', 'Test Name', 'Threads']).to_csv(output_csv, index=False)
+            print(f"结果已保存至 {output_csv}")
+            # 打印表格预览
+            print("\nPreview of results:")
+            print(final_df.head())
+        except Exception as e:
+            print(f"保存失败: {e}")
 
 if __name__ == "__main__":
     main()
