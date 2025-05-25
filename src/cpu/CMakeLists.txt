@@ -18,6 +18,9 @@ set_source_files_properties(
     test_dia.cpp
     PROPERTIES LANGUAGE CXX
 )
+target_compile_options(cpu_spmv PRIVATE
+    -save-temps=obj
+)
 
 add_executable(cpu_test_all
     test_all.cpp
@@ -33,6 +36,9 @@ target_link_libraries(cpu_test_all PRIVATE
 )
 set_target_properties(cpu_test_all PROPERTIES
     VERSION ${PROJECT_VERSION}
+)
+target_compile_options(cpu_test_all PRIVATE
+    -save-temps=obj
 )
 
 

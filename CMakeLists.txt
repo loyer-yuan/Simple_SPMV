@@ -21,6 +21,10 @@ add_compile_options(
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 find_package(ARMPL REQUIRED)
 
+# 强制在 Release 模式保留调试符号
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -g")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -g")
+
 ##
 ### Project build.
 ##
