@@ -65,6 +65,48 @@ struct CSRKernel<DType, 1>
     }
 };
 
+template <typename DType>
+struct CSRKernel<DType, 2>
+{
+    template <int UnrollFactor = 4>
+    static void Run(
+        const RTParams rt, const DType *__restrict__ csrData,
+        const IdxType *__restrict__ csrRowIdices,
+        const IdxType *__restrict__ csrColIdices, const DType *__restrict__ vec,
+        DType *__restrict__ out, const IdxType m, const IdxType k)
+    {
+        int ThreadNum = rt.hw.numCores;
+        const IdxType rowsPerT = m / ThreadNum;
+        const IdxType rowS = rt.tid * rowsPerT;
+        const IdxType rowE = rt.tid == ThreadNum - 1 ? m : rowS + rowsPerT;
+
+        for (IdxType i = rowS; i < rowE; ++i)
+        {
+            DType sum = 0;
+            const IdxType rowStart = csrRowIdices[i];
+            const IdxType rowEnd = csrRowIdices[i + 1];
+            for (IdxType j = rowStart; j < rowEnd; j += UnrollFactor)
+            {
+                if (j + UnrollFactor <= rowEnd)
+                {
+                    for (int u = 0; u < UnrollFactor; ++u)
+                    {
+                        sum += csrData[j + u] * vec[csrColIdices[j + u]];
+                    }
+                }
+                else
+                {
+                    for (; j < rowEnd; ++j)
+                    {
+                        sum += csrData[j] * vec[csrColIdices[j]];
+                    }
+                }
+            }
+            out[i] = sum;
+        }
+    }
+};
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename DType>
@@ -75,17 +117,20 @@ void CSRCompute0(
     const IdxType k)
 {
     const int ThreadNum = hw.numCores;
-    std::unique_ptr<std::thread[]> threads(new std::thread[ThreadNum]);
+    std::vector<std::thread> threads;
     for (IdxType i = 0; i < ThreadNum; i++)
     {
-        RTParams rt{i, hw};
-        threads[i] = std::thread(
-            &CSRKernel<DType, 1>::Run, rt, csrData, csrRowIdices, csrColIdices, vec,
-            out, m, k);
+        threads.emplace_back(
+            [&, i]()
+            {
+                RTParams rt{i, hw};
+                CSRKernel<DType, 2>::template Run<4>(
+                    rt, csrData, csrRowIdices, csrColIdices, vec, out, m, k);
+            });
     }
-    for (IdxType i = 0; i < ThreadNum; i++)
+    for (auto &t : threads)
     {
-        threads[i].join();
+        t.join();
     }
 }
 
