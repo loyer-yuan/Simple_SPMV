@@ -1,3 +1,6 @@
+#ifdef __ARM_FEATURE_SVE
+#include <arm_sve.h>
+#endif
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -8,6 +11,11 @@ namespace xsparse {
 
 template <typename DType, int version>
 struct CSRKernel;
+
+#ifdef __ARM_FEATURE_SVE
+template <typename DType, int version>
+struct CSRVectorKernel;
+#endif
 
 /**
  * @brief CSR scalar kernel
@@ -89,6 +97,7 @@ struct CSRKernel<DType, 2>
             {
                 if (j + UnrollFactor <= rowEnd)
                 {
+#pragma unroll
                     for (int u = 0; u < UnrollFactor; ++u)
                     {
                         sum += csrData[j + u] * vec[csrColIdices[j + u]];
@@ -107,6 +116,45 @@ struct CSRKernel<DType, 2>
     }
 };
 
+#ifdef __ARM_FEATURE_SVE
+template <>
+struct CSRVectorKernel<float, 0>
+{
+    static void Run(
+        const RTParams rt, const float *__restrict__ csrData,
+        const IdxType *__restrict__ csrRowIdices,
+        const IdxType *__restrict__ csrColIdices, const float *__restrict__ vec,
+        float *__restrict__ out, const IdxType m, const IdxType k)
+    {
+        int ThreadNum = rt.hw.numCores;
+        const IdxType rowsPerT = m / ThreadNum;
+        const IdxType rowS = rt.tid * rowsPerT;
+        const IdxType rowE = rt.tid == ThreadNum - 1 ? m : rowS + rowsPerT;
+
+        for (IdxType i = rowS; i < rowE; ++i)
+        {
+            const IdxType rowStart = csrRowIdices[i];
+            const IdxType rowEnd = csrRowIdices[i + 1];
+
+            svfloat32_t sum = svdup_f32(0.0f);
+            IdxType j = rowStart;
+            svbool_t pg = svwhilelt_b32(j, rowEnd);
+            do
+            {
+                svint32_t colIdx = svld1(pg, &csrColIdices[j]);
+                svfloat32_t matData = svld1(pg, &csrData[j]);
+                svfloat32_t vecData = svld1_gather_index(pg, vec, colIdx);
+                sum = svmla_f32_m(pg, sum, matData, vecData);
+                j += svcntw();
+                pg = svwhilelt_b32(j, rowEnd);
+            }
+            while (svptest_any(svptrue_b32(), pg));
+            out[i] = svaddv_f32(svptrue_b32(), sum);
+        }
+    }
+};
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename DType>
@@ -124,7 +172,9 @@ void CSRCompute0(
             [&, i]()
             {
                 RTParams rt{i, hw};
-                CSRKernel<DType, 2>::template Run<4>(
+                // CSRKernel<DType, 2>::template Run<8>(
+                //     rt, csrData, csrRowIdices, csrColIdices, vec, out, m, k);
+                CSRVectorKernel<DType, 0>::Run(
                     rt, csrData, csrRowIdices, csrColIdices, vec, out, m, k);
             });
     }
@@ -148,14 +198,14 @@ template void ComputeSPMVCSR<float>(
     const HWParams, const float *__restrict__, const IdxType *__restrict__,
     const IdxType *__restrict__, const float *__restrict__, float *__restrict__,
     const IdxType, const IdxType);
-template void ComputeSPMVCSR<double>(
-    const HWParams, const double *__restrict__, const IdxType *__restrict__,
-    const IdxType *__restrict__, const double *__restrict__, double *__restrict__,
-    const IdxType, const IdxType);
-template void ComputeSPMVCSR<int>(
-    const HWParams, const int *__restrict__, const IdxType *__restrict__,
-    const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
-    const IdxType, const IdxType);
+// template void ComputeSPMVCSR<double>(
+//     const HWParams, const double *__restrict__, const IdxType *__restrict__,
+//     const IdxType *__restrict__, const double *__restrict__, double *__restrict__,
+//     const IdxType, const IdxType);
+// template void ComputeSPMVCSR<int>(
+//     const HWParams, const int *__restrict__, const IdxType *__restrict__,
+//     const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
+//     const IdxType, const IdxType);
 
 template <typename DType>
 void ComputeSPMVCSR_Ref(
@@ -183,12 +233,12 @@ template void ComputeSPMVCSR_Ref<float>(
     const HWParams, const float *__restrict__, const IdxType *__restrict__,
     const IdxType *__restrict__, const float *__restrict__, float *__restrict__,
     const IdxType, const IdxType);
-template void ComputeSPMVCSR_Ref<double>(
-    const HWParams, const double *__restrict__, const IdxType *__restrict__,
-    const IdxType *__restrict__, const double *__restrict__, double *__restrict__,
-    const IdxType, const IdxType);
-template void ComputeSPMVCSR_Ref<int>(
-    const HWParams, const int *__restrict__, const IdxType *__restrict__,
-    const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
-    const IdxType, const IdxType);
+// template void ComputeSPMVCSR_Ref<double>(
+//     const HWParams, const double *__restrict__, const IdxType *__restrict__,
+//     const IdxType *__restrict__, const double *__restrict__, double *__restrict__,
+//     const IdxType, const IdxType);
+// template void ComputeSPMVCSR_Ref<int>(
+//     const HWParams, const int *__restrict__, const IdxType *__restrict__,
+//     const IdxType *__restrict__, const int *__restrict__, int *__restrict__,
+//     const IdxType, const IdxType);
 }  // namespace xsparse
