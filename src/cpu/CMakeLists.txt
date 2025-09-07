@@ -56,8 +56,46 @@ set_target_properties(cpu_test_dia PROPERTIES
     VERSION ${PROJECT_VERSION}
 )
 
+add_executable(cpu_test_csr
+    test_csr.cpp
+)
+target_link_libraries(cpu_test_csr PRIVATE
+    cpu_spmv
+    Threads::Threads
+    mmio
+)
+set_target_properties(cpu_test_csr PROPERTIES
+    VERSION ${PROJECT_VERSION}
+)
+target_compile_options(cpu_test_csr PRIVATE
+    ${ARM_SVE_FLAGS}
+    -save-temps=obj
+)
+
+add_executable(cpu_test_armpl_csr
+    test_armpl_csr.cpp
+)
+target_include_directories(cpu_test_armpl_csr PRIVATE
+    ${ARMPL_INCLUDE_DIRS}
+)
+target_link_libraries(cpu_test_armpl_csr PRIVATE
+    cpu_spmv
+    Threads::Threads
+    mmio
+    ${ARMPL_LIBRARIES}
+)
+set_target_properties(cpu_test_armpl_csr PROPERTIES
+    VERSION ${PROJECT_VERSION}
+)
+target_compile_options(cpu_test_armpl_csr PRIVATE
+    ${ARM_SVE_FLAGS}
+    -save-temps=obj
+)
+
 install(TARGETS cpu_test_dia DESTINATION ${TEST_INSTALL_BASE})
 install(TARGETS cpu_test_all DESTINATION ${TEST_INSTALL_BASE})
+install(TARGETS cpu_test_csr DESTINATION ${TEST_INSTALL_BASE})
+install(TARGETS cpu_test_armpl_csr DESTINATION ${TEST_INSTALL_BASE})
 
 # 检查ARM SVE支持的函数
 include(CheckCXXSourceCompiles)
