@@ -437,13 +437,13 @@ void MB_SVE_Memory_Copy(
 
 // SVE 随机读取带宽测试
 void MB_SVE_Random_Read(
-    const float CPU_FREQ_GHZ, size_t memory_size_mb, bool isPrint = false)
+    const float CPU_FREQ_GHZ, size_t memory_size_mb, size_t num_random_accesses, bool isPrint = false)
 {
     const size_t test_size = memory_size_mb * 1024 * 1024;  // 指定大小的测试数据
     const size_t vl = get_sve_vector_length();
     const size_t elements_per_vector = vl / sizeof(double);
     const size_t total_elements = test_size / sizeof(double);
-    const size_t num_random_accesses = 100000;  // 随机访问次数
+    // 随机访问次数通过参数传入
 
     // 分配内存并初始化
     std::vector<double> data(total_elements, 1.23);
@@ -524,13 +524,13 @@ void MB_SVE_Random_Read(
 
 // SVE 随机写入带宽测试
 void MB_SVE_Random_Write(
-    const float CPU_FREQ_GHZ, size_t memory_size_mb, bool isPrint = false)
+    const float CPU_FREQ_GHZ, size_t memory_size_mb, size_t num_random_accesses, bool isPrint = false)
 {
     const size_t test_size = memory_size_mb * 1024 * 1024;  // 指定大小的测试数据
     const size_t vl = get_sve_vector_length();
     const size_t elements_per_vector = vl / sizeof(double);
     const size_t total_elements = test_size / sizeof(double);
-    const size_t num_random_accesses = 100000;  // 随机访问次数
+    // 随机访问次数通过参数传入
 
     // 分配内存
     std::vector<double> data(total_elements);
@@ -628,13 +628,13 @@ void MB_SVE_Random_Write(
 
 // SVE Gather 读取带宽测试
 void MB_SVE_Gather_Read(
-    const float CPU_FREQ_GHZ, size_t memory_size_mb, bool isPrint = false)
+    const float CPU_FREQ_GHZ, size_t memory_size_mb, size_t num_gather_ops, bool isPrint = false)
 {
     const size_t test_size = memory_size_mb * 1024 * 1024;  // 指定大小的测试数据
     const size_t vl = get_sve_vector_length();
     const size_t elements_per_vector = vl / sizeof(double);
     const size_t total_elements = test_size / sizeof(double);
-    const size_t num_gather_ops = 50000;  // Gather 操作次数
+    // Gather 操作次数通过参数传入
 
     // 分配内存并初始化
     std::vector<double> data(total_elements, 1.23);
@@ -715,15 +715,119 @@ void MB_SVE_Gather_Read(
     }
 }
 
-// SVE Scatter 写入带宽测试
-void MB_SVE_Scatter_Write(
-    const float CPU_FREQ_GHZ, size_t memory_size_mb, bool isPrint = false)
+void MB_SVE_Gather_Read_Unroll4(
+    const float CPU_FREQ_GHZ, size_t memory_size_mb, size_t num_gather_ops, bool isPrint = false)
 {
     const size_t test_size = memory_size_mb * 1024 * 1024;  // 指定大小的测试数据
     const size_t vl = get_sve_vector_length();
     const size_t elements_per_vector = vl / sizeof(double);
     const size_t total_elements = test_size / sizeof(double);
-    const size_t num_scatter_ops = 50000;  // Scatter 操作次数
+    // Gather 操作次数通过参数传入（确保是4的倍数）
+    const size_t unroll_ops = num_gather_ops / 4;  // 展开后的循环次数
+
+    // 分配内存并初始化
+    std::vector<double> data(total_elements, 1.23);
+    double *base_ptr = data.data();
+
+    // 生成 gather 偏移量向量
+    auto offset_vectors = generate_gather_offsets(total_elements, num_gather_ops, vl);
+
+    // 将偏移量数据转换为连续数组以便汇编访问
+    std::vector<uint64_t> flat_offsets;
+    flat_offsets.reserve(num_gather_ops * elements_per_vector);
+    for (const auto &vec : offset_vectors)
+    {
+        flat_offsets.insert(flat_offsets.end(), vec.begin(), vec.end());
+    }
+
+    xsparse::Timer timer;
+    timer.start();
+
+    /*
+    C++ Intrinsic 等价代码说明（展开4次版本）:
+    svbool_t pg = svptrue_b64();                        // 设置谓词寄存器全真
+
+    for (size_t op = 0; op < unroll_ops; ++op) {
+        // 每次循环展开执行4个 gather 操作
+        for (int unroll = 0; unroll < 4; ++unroll) {
+            size_t current_op = op * 4 + unroll;
+            const uint64_t* current_offsets = &flat_offsets[current_op * elements_per_vector];
+
+            // 加载偏移量向量 (字节偏移量)
+            svuint64_t offset_vec = svld1_u64(pg, current_offsets);    // ld1d {z8.d}, p0/z, [offsets_ptr]
+
+            // 执行 gather 操作：根据偏移量向量从基地址分散加载
+            svfloat64_t result = svld1_gather_u64offset_f64(pg, base_ptr, offset_vec);  // ld1d {z0-z3.d}, p0/z, [base, z8-z11.d]
+        }
+    }
+    */
+
+    // clang-format off
+    __asm__ volatile(
+        "ptrue p0.d\n\t"                    // 设置谓词寄存器全真
+        "mov x0, %[num_ops]\n\t"            // 展开后的循环次数
+        "mov x1, %[offsets_ptr]\n\t"        // 偏移量数组指针
+        "mov x2, %[base_ptr]\n\t"           // 基地址
+        "mov x3, %[vec_size]\n\t"           // 每个向量的元素数量
+        "mov x4, #8\n\t"                    // sizeof(uint64_t) for offset stride
+        "1:\n"
+        // 第1个 gather 操作
+        "ld1d {z8.d}, p0/z, [x1]\n\t"      // 加载第1组偏移量向量
+        "ld1d {z0.d}, p0/z, [x2, z8.d]\n\t" // 第1个 gather 加载
+        "mul x5, x3, x4\n\t"               // 计算偏移量数组的步长
+        "add x1, x1, x5\n\t"               // 移动到下一个偏移量向量
+
+        // 第2个 gather 操作
+        "ld1d {z9.d}, p0/z, [x1]\n\t"      // 加载第2组偏移量向量
+        "ld1d {z1.d}, p0/z, [x2, z9.d]\n\t" // 第2个 gather 加载
+        "add x1, x1, x5\n\t"               // 移动到下一个偏移量向量
+
+        // 第3个 gather 操作
+        "ld1d {z10.d}, p0/z, [x1]\n\t"     // 加载第3组偏移量向量
+        "ld1d {z2.d}, p0/z, [x2, z10.d]\n\t" // 第3个 gather 加载
+        "add x1, x1, x5\n\t"               // 移动到下一个偏移量向量
+
+        // 第4个 gather 操作
+        "ld1d {z11.d}, p0/z, [x1]\n\t"     // 加载第4组偏移量向量
+        "ld1d {z3.d}, p0/z, [x2, z11.d]\n\t" // 第4个 gather 加载
+        "add x1, x1, x5\n\t"               // 移动到下一个偏移量向量
+
+        "subs x0, x0, #1\n\t"              // 递减循环计数器
+        "b.gt 1b\n"
+        :
+        : [num_ops] "r"(unroll_ops),
+          [offsets_ptr] "r"(flat_offsets.data()),
+          [base_ptr] "r"(base_ptr),
+          [vec_size] "r"(elements_per_vector)
+        : "x0", "x1", "x2", "x3", "x4", "x5", "p0",
+          "z0", "z1", "z2", "z3", "z8", "z9", "z10", "z11", "memory"
+    );
+    // clang-format on
+
+    timer.stop();
+    double ns = timer.elapsed<std::chrono::nanoseconds>();
+
+    const double bytes_transferred = num_gather_ops * vl;  // 每次 gather 加载一个向量
+    const double bandwidth_gb_s = bytes_transferred / ns;  // GB/s
+
+    if (isPrint)
+    {
+        std::cout << "Test Size: " << memory_size_mb << " MB" << std::endl;
+        std::cout << "Gather Read Unroll4 Bandwidth: " << bandwidth_gb_s << " GB/s ("
+                  << num_gather_ops << " gather operations, 4x unrolled)" << std::endl;
+        std::cout << "Elements per vector: " << elements_per_vector << std::endl;
+    }
+}
+
+// SVE Scatter 写入带宽测试
+void MB_SVE_Scatter_Write(
+    const float CPU_FREQ_GHZ, size_t memory_size_mb, size_t num_scatter_ops, bool isPrint = false)
+{
+    const size_t test_size = memory_size_mb * 1024 * 1024;  // 指定大小的测试数据
+    const size_t vl = get_sve_vector_length();
+    const size_t elements_per_vector = vl / sizeof(double);
+    const size_t total_elements = test_size / sizeof(double);
+    // Scatter 操作次数通过参数传入
 
     // 分配内存
     std::vector<double> data(total_elements, 0.0);
@@ -809,20 +913,22 @@ int main(int argc, char **argv)
 {
     float cpu_freq_ghz;
     size_t memory_size_mb = 256;  // 默认内存大小 256MB
+    size_t num_random_accesses = 100000;  // 默认随机访问次数
+    size_t num_gather_ops = 50000;  // 默认 Gather/Scatter 操作次数
 
-    if (argc < 2 || argc > 3)
+    if (argc < 2 || argc > 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <CPU_FREQ_GHZ> [MEMORY_SIZE_MB]"
+        std::cerr << "Usage: " << argv[0] << " <CPU_FREQ_GHZ> [MEMORY_SIZE_MB] [RANDOM_ACCESSES] [GATHER_OPS]"
                   << std::endl;
-        std::cerr << "Example: " << argv[0] << " 2.4 512" << std::endl;
-        std::cerr << "Default memory size: 256MB" << std::endl;
+        std::cerr << "Example: " << argv[0] << " 2.4 512 100000 50000" << std::endl;
+        std::cerr << "Defaults: memory_size=256MB, random_accesses=100000, gather_ops=50000" << std::endl;
         return 1;
     }
 
     try
     {
         cpu_freq_ghz = std::stof(argv[1]);
-        if (argc == 3)
+        if (argc >= 3)
         {
             memory_size_mb = std::stoull(argv[2]);
             if (memory_size_mb < 1)
@@ -831,10 +937,34 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
+        if (argc >= 4)
+        {
+            num_random_accesses = std::stoull(argv[3]);
+            if (num_random_accesses < 1)
+            {
+                std::cerr << "Random accesses must be at least 1" << std::endl;
+                return 1;
+            }
+        }
+        if (argc >= 5)
+        {
+            num_gather_ops = std::stoull(argv[4]);
+            if (num_gather_ops < 1)
+            {
+                std::cerr << "Gather operations must be at least 1" << std::endl;
+                return 1;
+            }
+            // 确保 gather_ops 是4的倍数，以便展开版本正常工作
+            if (num_gather_ops % 4 != 0)
+            {
+                std::cerr << "Gather operations must be a multiple of 4 for unroll4 version" << std::endl;
+                return 1;
+            }
+        }
     }
     catch (const std::invalid_argument &e)
     {
-        std::cerr << "Invalid arguments. CPU frequency and memory size must be numbers."
+        std::cerr << "Invalid arguments. All parameters must be valid numbers."
                   << std::endl;
         return 1;
     }
@@ -845,6 +975,8 @@ int main(int argc, char **argv)
     std::cout << "=======================================" << std::endl;
     std::cout << "SVE Memory Bandwidth Test" << std::endl;
     std::cout << "Memory Size: " << memory_size_mb << " MB" << std::endl;
+    std::cout << "Random Accesses: " << num_random_accesses << std::endl;
+    std::cout << "Gather/Scatter Operations: " << num_gather_ops << std::endl;
     std::cout << "=======================================" << std::endl;
 
     std::cout << "Sequential Read Test:" << std::endl;
@@ -863,22 +995,26 @@ int main(int argc, char **argv)
     std::cout << "---------------------------------------" << std::endl;
 
     std::cout << "Random Read Test:" << std::endl;
-    MB_SVE_Random_Read(cpu_freq_ghz, memory_size_mb, true);
+    MB_SVE_Random_Read(cpu_freq_ghz, memory_size_mb, num_random_accesses, true);
     std::cout << "---------------------------------------" << std::endl;
 
     std::cout << "Random Write Test:" << std::endl;
-    MB_SVE_Random_Write(cpu_freq_ghz, memory_size_mb, true);
+    MB_SVE_Random_Write(cpu_freq_ghz, memory_size_mb, num_random_accesses, true);
     std::cout << "---------------------------------------" << std::endl;
 
     std::cout << "Gather/Scatter Tests:" << std::endl;
     std::cout << "---------------------------------------" << std::endl;
 
     std::cout << "Gather Read Test:" << std::endl;
-    MB_SVE_Gather_Read(cpu_freq_ghz, memory_size_mb, true);
+    MB_SVE_Gather_Read(cpu_freq_ghz, memory_size_mb, num_gather_ops, true);
+    std::cout << "---------------------------------------" << std::endl;
+
+    std::cout << "Gather Read Unroll4 Test:" << std::endl;
+    MB_SVE_Gather_Read_Unroll4(cpu_freq_ghz, memory_size_mb, num_gather_ops, true);
     std::cout << "---------------------------------------" << std::endl;
 
     std::cout << "Scatter Write Test:" << std::endl;
-    MB_SVE_Scatter_Write(cpu_freq_ghz, memory_size_mb, true);
+    MB_SVE_Scatter_Write(cpu_freq_ghz, memory_size_mb, num_gather_ops, true);
     std::cout << "=======================================" << std::endl;
 
     return 0;
