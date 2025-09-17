@@ -107,18 +107,18 @@ public:
         ARMPL_CEHCK(info);
 
         // General optimize the matrix
-        info = armpl_spmat_hint(
-            armplMat, ARMPL_SPARSE_HINT_STRUCTURE, ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
-        ARMPL_CEHCK(info);
+        // info = armpl_spmat_hint(
+        //     armplMat, ARMPL_SPARSE_HINT_STRUCTURE, ARMPL_SPARSE_STRUCTURE_UNSTRUCTURED);
+        // ARMPL_CEHCK(info);
 
-        info = armpl_spmat_hint(
-            armplMat, ARMPL_SPARSE_HINT_SPMV_OPERATION, ARMPL_SPARSE_OPERATION_NOTRANS);
-        ARMPL_CEHCK(info);
+        // info = armpl_spmat_hint(
+        //     armplMat, ARMPL_SPARSE_HINT_SPMV_OPERATION, ARMPL_SPARSE_OPERATION_NOTRANS);
+        // ARMPL_CEHCK(info);
 
-        info = armpl_spmat_hint(
-            armplMat, ARMPL_SPARSE_HINT_SPMV_INVOCATIONS,
-            ARMPL_SPARSE_INVOCATIONS_MANY);
-        ARMPL_CEHCK(info);
+        // info = armpl_spmat_hint(
+        //     armplMat, ARMPL_SPARSE_HINT_SPMV_INVOCATIONS,
+        //     ARMPL_SPARSE_INVOCATIONS_MANY);
+        // ARMPL_CEHCK(info);
 
         info = armpl_spmv_optimize(armplMat);
         ARMPL_CEHCK(info);

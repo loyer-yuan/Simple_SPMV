@@ -145,6 +145,7 @@ struct CSRVectorKernel<float, 0>
                 svint32_t colIdx = svld1(pg, &csrColIdices[j]);
                 svfloat32_t matData = svld1(pg, &csrData[j]);
                 svfloat32_t vecData = svld1_gather_index(pg, vec, colIdx);
+                // svfloat32_t vecData = svcvt_f32_s32_x(pg, colIdx);
                 sum = svmla_f32_m(pg, sum, matData, vecData);
                 j += svcntw();
                 pg = svwhilelt_b32(j, rowEnd);
@@ -826,6 +827,17 @@ struct CSRVectorKernel<float, 3>
     }
 };
 
+// 清理版本2和3使用的宏定义
+#undef DECLARE_ACC
+#undef COMPUTE_ITERATION
+#undef ADD_TO_SUM
+#undef UNROLL_N
+#undef UNROLL_1
+#undef UNROLL_2
+#undef UNROLL_4
+#undef UNROLL_8
+#undef UNROLL_16
+
 /////////////////////////////////////////////////////////////////////////////////////////
 // Version 4: Advanced CSRVectorKernel with hand-crafted Software Pipeline [TODO]
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -845,19 +857,74 @@ struct CSRVectorKernel<float, 4>
         const IdxType rowE = (rt.tid == ThreadNum - 1 ? m : rowS + rowsPerT);
 
         const uint32_t vl = svcntw();  // runtime vector length
+
+        for (IdxType i = rowS; i < rowE; ++i)
+        {
+            const IdxType rowStart = csrRowIdices[i];
+            const IdxType rowEnd = csrRowIdices[i + 1];
+            const IdxType nnz = rowEnd - rowStart;
+
+            const IdxType full = nnz / vl;
+            const IdxType tail = nnz % vl;
+
+            const IdxType *pCol = &csrColIdices[rowStart];
+            const float *pVal = &csrData[rowStart];
+
+            svfloat32_t acc0 = svdup_f32(0.0f);
+
+            // 3-Stage Pipeline
+            if (full > 2)
+            {
+                // [Fill pipeline]
+                // Stage 1: load column indices and matrix values
+                svint32_t idx0 = svld1_s32(svptrue_b32(), pCol);
+                svfloat32_t mat0 = svld1(svptrue_b32(), pVal);
+
+                // Stage 2: load vector values
+                svfloat32_t vec0 = svld1_gather_index(svptrue_b32(), vec, idx0);
+                idx0 = svld1_s32(svptrue_b32(), pCol + 1 * vl);
+
+                IdxType blk = 2;
+                for (; blk < full; blk++)
+                {
+                    // Stage 3: compute and store
+                    acc0 = svmla_f32_m(svptrue_b32(), acc0, mat0, vec0);  // blk-2
+                    vec0 = svld1_gather_index(svptrue_b32(), vec, idx0);  // blk-1
+                    idx0 = svld1_s32(svptrue_b32(), pCol + blk * vl);  // blk
+                    mat0 = svld1(svptrue_b32(), pVal + (blk - 1) * vl);  // blk-1
+                }
+
+                // [Empty pipeline]
+                acc0 = svmla_f32_m(svptrue_b32(), acc0, mat0, vec0);
+                vec0 = svld1_gather_index(svptrue_b32(), vec, idx0);
+                mat0 = svld1(svptrue_b32(), pVal + blk * vl);
+
+                acc0 = svmla_f32_m(svptrue_b32(), acc0, mat0, vec0);
+            }
+            else
+            {
+                for (IdxType blk = 0; blk < full; blk++)
+                {
+                    svint32_t idx = svld1_s32(svptrue_b32(), pCol + blk * vl);
+                    svfloat32_t a = svld1(svptrue_b32(), pVal + blk * vl);
+                    svfloat32_t x = svld1_gather_index(svptrue_b32(), vec, idx);
+                    acc0 = svmla_f32_m(svptrue_b32(), acc0, a, x);
+                }
+            }
+
+            if (tail)
+            {
+                svbool_t pg = svwhilelt_b32(uint32_t(0), uint32_t(tail));
+                svint32_t idx = svld1_s32(pg, pCol + full * vl);
+                svfloat32_t a = svld1(pg, pVal + full * vl);
+                svfloat32_t x = svld1_gather_index(pg, vec, idx);
+                acc0 = svmla_f32_m(pg, acc0, a, x);
+            }
+
+            out[i] = svaddv_f32(svptrue_b32(), acc0);
+        }
     }
 };
-
-// 清理版本3和4使用的宏定义
-#undef DECLARE_ACC
-#undef COMPUTE_ITERATION
-#undef ADD_TO_SUM
-#undef UNROLL_N
-#undef UNROLL_1
-#undef UNROLL_2
-#undef UNROLL_4
-#undef UNROLL_8
-#undef UNROLL_16
 
 // #endif
 
@@ -880,7 +947,7 @@ void CSRCompute0(
                 RTParams rt{i, hw};
                 // CSRKernel<DType, 2>::template Run<8>(
                 //     rt, csrData, csrRowIdices, csrColIdices, vec, out, m, k);
-                CSRVectorKernel<DType, 2>::Run(
+                CSRVectorKernel<DType, 4>::Run(
                     rt, csrData, csrRowIdices, csrColIdices, vec, out, m, k);
             });
     }

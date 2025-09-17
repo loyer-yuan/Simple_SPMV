@@ -40,6 +40,8 @@ target_link_libraries(cpu_test_all PRIVATE
     mmio
     ${ARMPL_LIBRARIES}
 )
+# 添加静态链接选项
+target_link_options(cpu_test_all PRIVATE ${ARMPL_STATIC_LINK_FLAGS})
 set_target_properties(cpu_test_all PROPERTIES
     VERSION ${PROJECT_VERSION}
 )
@@ -84,6 +86,8 @@ target_link_libraries(cpu_test_armpl_csr PRIVATE
     mmio
     ${ARMPL_LIBRARIES}
 )
+# 添加静态链接选项
+target_link_options(cpu_test_armpl_csr PRIVATE ${ARMPL_STATIC_LINK_FLAGS})
 set_target_properties(cpu_test_armpl_csr PROPERTIES
     VERSION ${PROJECT_VERSION}
 )
