@@ -33,12 +33,14 @@ add_executable(cpu_test_all
 )
 target_include_directories(cpu_test_all PRIVATE
     ${ARMPL_INCLUDE_DIRS}
+    ${KML_INCLUDE_DIRS}
 )
 target_link_libraries(cpu_test_all PRIVATE
     cpu_spmv
     Threads::Threads
     mmio
     ${ARMPL_LIBRARIES}
+    ${KML_LIBRARIES}
 )
 # 添加静态链接选项
 target_link_options(cpu_test_all PRIVATE ${ARMPL_STATIC_LINK_FLAGS})
@@ -96,10 +98,24 @@ target_compile_options(cpu_test_armpl_csr PRIVATE
     -save-temps=obj
 )
 
+add_executable(cpu_test_kml_csr
+    test_kml_csr.cpp
+)
+target_include_directories(cpu_test_kml_csr PRIVATE
+    ${KML_INCLUDE_DIRS}
+)
+target_link_libraries(cpu_test_kml_csr PRIVATE
+    cpu_spmv
+    Threads::Threads
+    mmio
+    ${KML_LIBRARIES}
+)
+
 install(TARGETS cpu_test_dia DESTINATION ${TEST_INSTALL_BASE})
 install(TARGETS cpu_test_all DESTINATION ${TEST_INSTALL_BASE})
 install(TARGETS cpu_test_csr DESTINATION ${TEST_INSTALL_BASE})
 install(TARGETS cpu_test_armpl_csr DESTINATION ${TEST_INSTALL_BASE})
+install(TARGETS cpu_test_kml_csr DESTINATION ${TEST_INSTALL_BASE})
 
 # 检查ARM SVE支持的函数
 include(CheckCXXSourceCompiles)

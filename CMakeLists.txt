@@ -20,6 +20,7 @@ add_compile_options(
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake")
 find_package(ARMPL REQUIRED)
+find_package(KML REQUIRED)
 
 # 设置静态链接偏好
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".so")

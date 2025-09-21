@@ -31,38 +31,36 @@ std::string format_value(T value, int precision = 6)
               << std::setw(VALUE_WIDTH) << format_value((value)) << " " unit   \
               << std::endl;
 
-#define PerfFunc(kernel, SPmat)                                                        \
-    {                                                                                  \
-        const int LoopCount = 30;                                                      \
-        xsparse::Timer timer;                                                          \
-        for (int i = 0; i < 5; ++i)                                                    \
-        {                                                                              \
-            kernel;                                                                    \
-        }                                                                              \
-        timer.start();                                                                 \
-        for (int i = 0; i < LoopCount; ++i)                                            \
-        {                                                                              \
-            kernel;                                                                    \
-        }                                                                              \
-        timer.stop();                                                                  \
-        double mTime = timer.elapsed<std::chrono::nanoseconds>() / (double)1e9;        \
-        double mFlops = (SPmat.GetTheoreticalFlops() * double(LoopCount)) / mTime;     \
-        double mEBandwidth =                                                           \
-            (SPmat.GetEffectiveSizeInBytes() * double(LoopCount)) / mTime;             \
-        double mABandwidth = (SPmat.GetAllSizeInBytes() * double(LoopCount)) / mTime;  \
-        FormatOutput("Time", mTime * 1000 / double(LoopCount), "ms");                  \
-        FormatOutput("Flops/s", mFlops / 1024.0 / 1024.0 / 1024.0, "GFlops/s");        \
-        FormatOutput(                                                                  \
-            "Effective Bandwidth", mEBandwidth / 1024.0 / 1024.0 / 1024.0, "GB/s");    \
-        FormatOutput(                                                                  \
-            "Total GFlops", SPmat.GetTheoreticalFlops() / 1024.0 / 1024.0 / 1024.0,    \
-            "GFlops");                                                                 \
-        FormatOutput(                                                                  \
-            "Effective Size",                                                          \
-            SPmat.GetEffectiveSizeInBytes() / 1024.0 / 1024.0 / 1024.0, "GB");         \
-        FormatOutput(                                                                  \
-            "All Size", SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0 / 1024.0, "GB");   \
-        FormatOutput("All Bandwidth", mABandwidth / 1024.0 / 1024.0 / 1024.0, "GB/s"); \
+#define PerfFunc(kernel, SPmat)                                                       \
+    {                                                                                 \
+        const int LoopCount = 1000;                                                   \
+        xsparse::Timer timer;                                                         \
+        for (int i = 0; i < 100; ++i)                                                 \
+        {                                                                             \
+            kernel;                                                                   \
+        }                                                                             \
+        timer.start();                                                                \
+        for (int i = 0; i < LoopCount; ++i)                                           \
+        {                                                                             \
+            kernel;                                                                   \
+        }                                                                             \
+        timer.stop();                                                                 \
+        double mTime = timer.elapsed<std::chrono::nanoseconds>() / (double)1e9;       \
+        double mFlops = (SPmat.GetTheoreticalFlops() * double(LoopCount)) / mTime;    \
+        double mEBandwidth =                                                          \
+            (SPmat.GetEffectiveSizeInBytes() * double(LoopCount)) / mTime;            \
+        double mABandwidth = (SPmat.GetAllSizeInBytes() * double(LoopCount)) / mTime; \
+        double mBandwidth =                                                           \
+            (SPmat.GetSPMVBestWorkSetInBytes() * double(LoopCount)) / mTime;          \
+        FormatOutput("Time", mTime * 1000 / double(LoopCount), "ms");                 \
+        FormatOutput("Flops/s", mFlops / 1024.0 / 1024.0 / 1024.0, "GFlops/s");       \
+        FormatOutput("WS Bandwidth", mBandwidth / 1024.0 / 1024.0, "MB/s");           \
+        FormatOutput(                                                                 \
+            "Total GFlops", SPmat.GetTheoreticalFlops() / 1024.0 / 1024.0 / 1024.0,   \
+            "GFlops");                                                                \
+        FormatOutput("Mat Size", SPmat.GetAllSizeInBytes() / 1024.0 / 1024.0, "MB");  \
+        FormatOutput(                                                                 \
+            "WS Size", SPmat.GetSPMVBestWorkSetInBytes() / 1024.0 / 1024.0, "MB");    \
     }
 
 struct CmdOptions

@@ -469,6 +469,7 @@ public:
                 this->mInfo.rowIdx[i] = elements[i].rowIdx;
                 this->mInfo.colIdx[i] = elements[i].colIdx;
                 this->data[i] = 1.01f;  // Set value to 1 for pattern matrix
+                // this->data[i] = 1.0f;  // Set value to 1 for pattern matrix
             }
         }
         else
@@ -478,6 +479,7 @@ public:
                 this->mInfo.rowIdx[i] = elements[i].rowIdx;
                 this->mInfo.colIdx[i] = elements[i].colIdx;
                 this->data[i] = elements[i].value;
+                // this->data[i] = 1.0f;
             }
         }
 
@@ -609,6 +611,11 @@ public:
     [[nodiscard]] inline size_t GetAllSizeInBytes() const
     {
         return this->mInfo.nnz * (sizeof(DType) + sizeof(IdxType) * 2);
+    }
+
+    [[nodiscard]] inline size_t GetSPMVBestWorkSetInBytes() const
+    {
+        return GetAllSizeInBytes() + (this->m + this->n) * sizeof(DType);
     }
 
     [[nodiscard]] inline size_t GetTheoreticalFlops() const
@@ -805,6 +812,11 @@ public:
     {
         return this->mInfo.nnz * (sizeof(DType) + sizeof(IdxType)) +
                (this->m + 1) * sizeof(IdxType);
+    }
+
+    [[nodiscard]] inline size_t GetSPMVBestWorkSetInBytes() const
+    {
+        return GetAllSizeInBytes() + (this->m + this->n) * sizeof(DType);
     }
 
     [[nodiscard]] inline size_t GetTheoreticalFlops() const
@@ -1059,6 +1071,11 @@ public:
     {
         return this->mInfo.numRows * this->mInfo.maxCol *
                (sizeof(DType) + sizeof(IdxType));
+    }
+
+    [[nodiscard]] inline size_t GetSPMVBestWorkSetInBytes() const
+    {
+        return GetAllSizeInBytes() + (this->m + this->n) * sizeof(DType);
     }
 
     [[nodiscard]] inline size_t GetTheoreticalFlops() const

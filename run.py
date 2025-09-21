@@ -168,9 +168,9 @@ def main():
         patterns = {
             'Time': r'Time:\s+([\d.]+)\s*ms',
             'Flops/s': r'Flops/s:\s+([\d.]+)\s*GFlops/s',
-            'Effective Bandwidth': r'Effective Bandwidth:\s+([\d.]+)\s*GB/s',
-            'All Bandwidth': r'All Bandwidth:\s+([\d.]+)\s*GB/s',
-            'All Size': r'All Size:\s+([\d.]+)\s*GB',
+            'WS Bandwidth': r'WS Bandwidth:\s+([\d.]+)\s*MB/s',
+            'Mat Size': r'Mat Size:\s+([\d.]+)\s*MB',
+            'WS Size': r'WS Size:\s+([\d.]+)\s*MB',
             'Total GFlops': r'Total GFlops:\s+([\d.]+)\s*GFlops'
         }
 
@@ -224,8 +224,8 @@ def main():
     # 保存结果(确保列顺序)
     column_order = [
         'Input File', 'Threads', 'Test Name',
-        'Time', 'Flops/s', 'Effective Bandwidth',
-        'All Bandwidth', 'All Size', 'Total GFlops'
+        'Time', 'Flops/s', 'WS Bandwidth',
+        'Mat Size', 'WS Size', 'Total GFlops'
     ]
 
     if force_run:

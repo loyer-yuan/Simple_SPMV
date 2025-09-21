@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "ArmPL.hpp"
 #include "Device.h"
+#include "KML.hpp"
 #include "Math.hpp"
 #include "Matrix.hpp"
 #include "Ops.h"
@@ -334,22 +334,28 @@ int main(int argc, char *argv[])
         }
 
         // Test CSR kernel with ArmPL
-        std::cout << "Test ArmPL CSR kernel.\n" << std::endl;
-        xsparse::ArmPL<xsparse::SPMatF::SPMatFormatCSR, TestDType> armplCSRKernel;
-        if (!armplCSRKernel.Initialize(
-                spMatCSR.m, spMatCSR.n, spMatCSR.mInfo.nnz, spMatCSR.data.get(),
-                spMatCSR.mInfo.rowPtr.get(), spMatCSR.mInfo.colIdx.get()))
+        std::cout << "Test KML CSR kernel.\n" << std::endl;
+        std::cout << "Running KML CSR kernel..." << std::endl;
+
+        xsparse::kmlwarp::KML<TestDType> kmlCSRKernel;
+        std::vector<TestDType> ovec_kml(cmdOpt.M);
+
+        if (!kmlCSRKernel.Run(
+                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_kml.data(), spMatCSR.m,
+                spMatCSR.n))
         {
-            std::cerr << "Failed to create ArmPL CSR matrix!" << std::endl;
+            std::cerr << "Failed to run KML CSR kernel!" << std::endl;
             return -1;
         }
-        std::vector<TestDType> ovec_armpl(cmdOpt.M);
 
-        std::cout << "Running SpMV kernel..." << std::endl;
-        PerfFunc(armplCSRKernel.Run(ivec.data(), ovec_armpl.data()), spMatCSR);
-        // armplCSRKernel.Run(ivec.data(), ovec_armpl.data());
+        PerfFunc(
+            kmlCSRKernel.Run(
+                spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
+                spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_kml.data(), spMatCSR.m,
+                spMatCSR.n),
+            spMatCSR);
 
-        armplCSRKernel.Destroy();
         std::cout << "End of test!" << std::endl;
         std::cout << "----------------------------------------" << std::endl;
     }
