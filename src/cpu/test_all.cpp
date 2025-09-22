@@ -415,7 +415,7 @@ int main(int argc, char *argv[])
         if (!kmlCSRKernel.Run(
                 spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_kml.data(), spMatCSR.m,
-                spMatCSR.n))
+                spMatCSR.n, cmdOpt.numCores))
         {
             std::cerr << "Failed to run KML CSR kernel!" << std::endl;
             return -1;
@@ -426,7 +426,7 @@ int main(int argc, char *argv[])
             kmlCSRKernel.Run(
                 spMatCSR.data.get(), spMatCSR.mInfo.rowPtr.get(),
                 spMatCSR.mInfo.colIdx.get(), ivec.data(), ovec_kml.data(), spMatCSR.m,
-                spMatCSR.n),
+                spMatCSR.n, cmdOpt.numCores),
             spMatCSR);
 
         std::cout << "Checking results..." << std::endl;

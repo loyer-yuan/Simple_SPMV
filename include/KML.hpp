@@ -15,8 +15,17 @@ public:
     bool Run(
         const DType *__restrict__ csrData, const int *__restrict__ csrRowIdices,
         const int *__restrict__ csrColIdices, const DType *__restrict__ vec,
-        DType *__restrict__ out, const int m, const int k)
+        DType *__restrict__ out, const int m, const int k, const int thread_num = 1)
     {
+        if (thread_num < 1 || thread_num > 256)
+        {
+            std::cerr << "Invalid thread number, thread_num must be in [1, 256]"
+                      << std::endl;
+            return false;
+        }
+
+        kml_set_thread_num(thread_num);
+
         kml_sparse_operation_t opt = KML_SPARSE_OPERATION_NON_TRANSPOSE;
         kml_sparse_status_t status =
             kml_csparse_scsrgemv(opt, m, csrData, csrRowIdices, csrColIdices, vec, out);
